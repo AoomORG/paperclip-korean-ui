@@ -11,12 +11,14 @@ Paperclip 공식 dist를 고치지 않고 크롬 UI를 한국어로 덮는다.
 ## 빌드·설치
 
 ```sh
-cd plugins/paperclip-korean-ui
+git clone https://github.com/AoomORG/paperclip-korean-ui.git
+cd paperclip-korean-ui
+# Node >= 24.11
 npm ci
 npm run build
 ```
 
-그다음 Paperclip에 로컬 경로로 설치한다.
+그다음 Paperclip에 로컬 경로로 설치한다. 로컬 경로는 개발용이다. 배포용 npm 패키지 공개는 아직 하지 않는다.
 
 Node.js 24.11 이상이 필요하다. SDK는 현재 검증한 Paperclip과 같은 `2026.831.1`에 고정한다. 다른 버전의 호환성은 별도로 확인한다. 개인 npm 캐시나 회사 DB는 설치에 필요하지 않다.
 
