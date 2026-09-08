@@ -1,0 +1,20 @@
+{
+  "name": "paperclip-korean-ui",
+  "version": "1.1.2",
+  "private": true,
+  "files": ["dist", "README.md"],
+  "type": "module",
+  "description": "Paperclip chrome Korean overlay with Han/EN toggle. Does not patch paperclipai dist.",
+  "paperclipPlugin": {
+    "manifest": "./dist/manifest.js",
+    "worker": "./dist/worker.js",
+    "ui": "./dist/ui"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@paperclipai/plugin-sdk": "2026.831.1"
+  }
+}
