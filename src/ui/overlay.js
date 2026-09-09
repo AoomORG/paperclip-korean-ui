@@ -31,6 +31,8 @@ const originalText = new WeakMap();
 const originalAttr = new WeakMap();
 let observer = null;
 let started = false;
+const overlayOwned = new WeakSet();
+let applyingOverlay = false;
 
 export function getUiLanguage() {
   const value = window.localStorage.getItem(STORAGE_KEY);
@@ -231,10 +233,46 @@ function restoreSkillParagraph(p) {
   }
 }
 
+function isSkillCardRoot(el) {
+  if (!el || el === document.body) return false;
+  const role = el.getAttribute?.("role") || "";
+  if (role === "listitem" || role === "article") return true;
+  const tag = el.tagName;
+  return tag === "LI" || tag === "ARTICLE";
+}
+
+function countSkillNames(root, nameSet) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let n = 0;
+  while (walker.nextNode()) {
+    const label = (walker.currentNode.nodeValue ?? "").trim();
+    if (nameSet.has(label)) n += 1;
+    if (n > 1) return n;
+  }
+  return n;
+}
+
+function closestSkillCard(nameNode, nameSet) {
+  const label = (nameNode.nodeValue ?? "").trim();
+  let el = nameNode.parentElement;
+  while (el && el !== document.body) {
+    if (isSkillCardRoot(el) && countSkillNames(el, nameSet) <= 1) return el;
+    el = el.parentElement;
+  }
+  el = nameNode.parentElement;
+  while (el && el !== document.body) {
+    const blob = (el.textContent || "").trim();
+    if (blob.length > label.length + 40 && countSkillNames(el, nameSet) <= 1) return el;
+    el = el.parentElement;
+  }
+  return nameNode.parentElement;
+}
+
 function applySkills(root, lang) {
   if (!window.location.pathname.includes("/skills")) return;
   const catalog = skillsCatalog;
   if (!catalog) return;
+  if (!root) return;
   const nameSet = new Set(Object.keys(catalog));
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const hits = [];
@@ -246,14 +284,8 @@ function applySkills(root, lang) {
     hits.push({ node, label });
   }
   for (const { node, label } of hits) {
-    const el = node.parentElement;
-    let card = el;
-    while (card && card !== document.body) {
-      const blob = (card.textContent || "").trim();
-      if (blob.length > label.length + 40) break;
-      card = card.parentElement;
-    }
-    if (!card) continue;
+    const card = closestSkillCard(node, nameSet);
+    if (!card || card === document.body) continue;
     const translated = catalog[label];
     const textWalker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
     while (textWalker.nextNode()) {
@@ -264,14 +296,20 @@ function applySkills(root, lang) {
       if (text.length < 40) continue;
       if (lang !== "ko") {
         if (originalText.has(desc)) {
-          desc.nodeValue = originalText.get(desc);
+          const orig = originalText.get(desc);
+          const cur = desc.nodeValue ?? "";
+          if (cur === orig || (translated && cur.trim() === translated.trim())) {
+            desc.nodeValue = orig;
+          }
           originalText.delete(desc);
+          overlayOwned.delete(desc);
         }
         continue;
       }
       if (!translated) continue;
       if (text === translated) break;
       if (!originalText.has(desc)) originalText.set(desc, desc.nodeValue ?? "");
+      overlayOwned.add(desc);
       desc.nodeValue = translated;
       break;
     }
@@ -305,8 +343,11 @@ export function startOverlay() {
   started = true;
   applyAll();
   observer = new MutationObserver((mutations) => {
+    if (applyingOverlay) return;
     const lang = getUiLanguage();
+    const skillRoots = new Set();
     for (const mutation of mutations) {
+      if (mutation.type === "characterData" && overlayOwned.has(mutation.target)) continue;
       if (mutation.type === "characterData" && mutation.target) {
         translateTextNode(mutation.target, lang);
       }
@@ -317,8 +358,22 @@ export function startOverlay() {
       if (mutation.type === "attributes" && mutation.target instanceof HTMLElement) {
         if (ATTRS.includes(mutation.attributeName || "")) translateAttrs(mutation.target, lang);
       }
+      if (window.location.pathname.includes("/skills")) {
+        const target = mutation.target;
+        if (target && target.nodeType === Node.ELEMENT_NODE) skillRoots.add(target);
+        else if (target && target.parentElement) skillRoots.add(target.parentElement);
+        for (const added of mutation.addedNodes) {
+          if (added.nodeType === Node.ELEMENT_NODE) skillRoots.add(added);
+        }
+      }
     }
-    if (document.body) applySkills(document.body, lang);
+    if (skillRoots.size === 0) return;
+    applyingOverlay = true;
+    try {
+      for (const root of skillRoots) applySkills(root, lang);
+    } finally {
+      applyingOverlay = false;
+    }
   });
   observer.observe(document.body, {
     subtree: true,
