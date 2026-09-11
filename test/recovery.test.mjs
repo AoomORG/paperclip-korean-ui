@@ -67,3 +67,41 @@ test('ordinary issue chat prose with the same sentence stays English', () => {
   f.translate(node, 'ko');
   assert.equal(node.nodeValue, sentence);
 });
+test('collapsed system notice title and metadata labels translate', () => {
+  const f = fixture('/AOO/issues/AOO-10', ['data-testid="task-chat-system-notice"']);
+  for (const original of ['Missing issue disposition', 'ASSIGNEE', 'RUN EVIDENCE', 'AUTOMATIC RETRY']) {
+    const node = f.node(original);
+    f.translate(node, 'ko');
+    assert.match(node.nodeValue, /[가-힣]/, original);
+    f.translate(node, 'en');
+    assert.equal(node.nodeValue, original);
+  }
+});
+
+test('issue properties chrome translates on issue pages only', () => {
+  const f = fixture('/AOO/issues/AOO-10', []);
+  for (const original of ['Properties', 'Relationships', 'Execution', 'Blocked by']) {
+    const node = f.node(original);
+    f.translate(node, 'ko');
+    assert.match(node.nodeValue, /[가-힣]/, original);
+    f.translate(node, 'en');
+    assert.equal(node.nodeValue, original);
+  }
+  const prose = fixture('/AOO/issues/AOO-10', ['.prose']);
+  const node = prose.node('Properties');
+  prose.translate(node, 'ko');
+  assert.equal(node.nodeValue, 'Properties');
+  const other = fixture('/AOO/projects', []);
+  const n2 = other.node('Properties');
+  other.translate(n2, 'ko');
+  assert.equal(n2.nodeValue, 'Properties');
+});
+
+test('issue status tokens stay English on the properties panel', () => {
+  const f = fixture('/AOO/issues/AOO-10', []);
+  for (const original of ['blocked', 'AOO-10', 'todo']) {
+    const node = f.node(original);
+    f.translate(node, 'ko');
+    assert.equal(node.nodeValue, original);
+  }
+});

@@ -140,6 +140,14 @@ function translateWorkedFor(text) {
   return null;
 }
 
+const ISSUE_CHROME = new Set([
+  "Properties", "Triage", "TRIAGE", "Status", "Labels", "Assignee", "Project",
+  "Relationships", "RELATIONSHIPS", "Parent", "Blocked by", "Blocking", "Related tasks",
+  "Execution", "EXECUTION", "Reviewers", "Approvers", "Monitor", "Watchdog",
+  "About", "ABOUT", "Originating", "Started", "Created", "Updated",
+  "Add blocker", "+ Add blocker", "Worked",
+]);
+
 function lookup(text, node) {
   const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
   // System UI only: never translate editable/source content or stored issue prose.
@@ -165,7 +173,16 @@ function lookup(text, node) {
     if (match) return `결정 ${match[1]}건`;
     match = normalized.match(/^Recovery in progress · (\d+)\/(\d+)$/);
     if (match) return `복구 진행 중 · ${match[1]}/${match[2]}`;
+    match = normalized.match(/^Blocked · (\d+) blockers? need attention$/);
+    if (match) return `막힘 · 확인이 필요한 차단 ${match[1]}건`;
     if (systemNotice) return null;
+  }
+  const issueChrome = /\/issues(\/|$)/.test(window.location.pathname)
+    && !el?.closest('.prose, [data-pc-i18n-skip]');
+  if (issueChrome) {
+    const catalog = chromeCatalog.decisions || {};
+    const chromeText = text.replace(/\s+/g, " ");
+    if (ISSUE_CHROME.has(chromeText) && catalog[chromeText]) return catalog[chromeText];
   }
   if (!text || STATUS_SKIP.has(text) || isIssueId(text) || isAgentKey(text) || isPathish(text)) {
     return null;
