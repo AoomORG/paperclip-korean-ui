@@ -151,6 +151,14 @@ function translateWorkedFor(text) {
   return null;
 }
 
+function translateRunChrome(text) {
+  if (text.startsWith("Tasks Touched")) return "관련 작업" + text.slice("Tasks Touched".length);
+  let m = text.match(/^(\d+) tok$/);
+  if (m) return m[1] + " 토큰";
+  if (text === "See All →" || text === "See All ->") return "모두 보기 →";
+  return null;
+}
+
 const ISSUE_CHROME = new Set([
   "Properties", "Triage", "TRIAGE", "Status", "Labels", "Assignee", "Project",
   "Relationships", "RELATIONSHIPS", "Parent", "Blocked by", "Blocking", "Related tasks",
@@ -220,6 +228,8 @@ function lookup(text, node) {
   }
   const worked = translateWorkedFor(text);
   if (worked) return worked;
+  const runChrome = translateRunChrome(text);
+  if (runChrome) return runChrome;
   const rel = translateRelativeTime(text);
   if (rel) return rel;
   const collapse = translateCollapseExpand(text);
@@ -404,10 +414,176 @@ function applyTree(root, lang) {
   if (skillRoot) applySkills(skillRoot, lang);
 }
 
+const CLIP_STYLE_ID = "paperclip-korean-ui-clip-fix";
+const CLIP_FIX_CSS = `
+a[href*="agent-connect"] {
+  min-width: 0 !important;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+a[href*="agent-connect"] > span:last-of-type {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-radix-popper-content-wrapper]:has(a[href*="/company/settings/instance/profile"]) {
+  top: 8px !important;
+  bottom: auto !important;
+  transform: none !important;
+  max-height: calc(100vh - 16px) !important;
+}
+[data-radix-popper-content-wrapper]:has(a[href*="/company/settings/instance/profile"]) > * {
+  max-height: calc(100vh - 16px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+a[href*="/runs"] span.truncate,
+a[href*="/runs/"] span.truncate {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+`;
+
+function looksLikeMarkdown(text) {
+  return /(^|\s)#{1,6}\s|\*\*[^*]+\*\*|__[^_]+__|`[^`]+`|^\s*[-*+]\s|\[[^\]]+\]\([^)]+\)/m.test(text);
+}
+
+function stripMarkdownPreview(text) {
+  return text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^\s*[-*+]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function injectClipFixCss() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById(CLIP_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = CLIP_STYLE_ID;
+  style.textContent = CLIP_FIX_CSS;
+  document.head.appendChild(style);
+}
+
+function decorateConnectLinks(root) {
+  if (!root || typeof root.querySelectorAll !== "function") return;
+  const links = root.querySelectorAll('a[href*="agent-connect"]');
+  for (const link of links) {
+    const label = (link.textContent || "").replace(/\s+/g, " ").trim();
+    if (!label) continue;
+    if (!link.getAttribute("title")) link.setAttribute("title", label);
+    if (!link.getAttribute("aria-label")) link.setAttribute("aria-label", label);
+  }
+}
+
+function fitAccountPopoverOnce() {
+  if (typeof document === "undefined") return false;
+  let clipped = false;
+  const wrappers = document.querySelectorAll("[data-radix-popper-content-wrapper]");
+  for (const wrap of wrappers) {
+    if (!(wrap instanceof HTMLElement)) continue;
+    if (!wrap.querySelector('a[href*="/company/settings/instance/profile"]')) continue;
+    const max = Math.max(240, window.innerHeight - 16);
+    const inner = wrap.firstElementChild;
+    if (inner instanceof HTMLElement) {
+      inner.style.setProperty("max-height", max + "px", "important");
+      inner.style.setProperty("overflow-y", "auto", "important");
+      inner.style.setProperty("overflow-x", "hidden", "important");
+    }
+    wrap.style.setProperty("max-height", max + "px", "important");
+    const rect = wrap.getBoundingClientRect();
+    if (rect.top >= 8 && rect.bottom <= window.innerHeight - 8) continue;
+    wrap.style.setProperty("left", Math.max(8, rect.left) + "px", "important");
+    wrap.style.setProperty("top", "8px", "important");
+    wrap.style.setProperty("bottom", "auto", "important");
+    wrap.style.setProperty("transform", "translate3d(0px, 0px, 0px)", "important");
+    if (wrap.getBoundingClientRect().top < 8) clipped = true;
+  }
+  return clipped;
+}
+
+function fitAccountPopover() {
+  if (!fitAccountPopoverOnce()) return;
+  requestAnimationFrame(() => {
+    if (!fitAccountPopoverOnce()) return;
+    setTimeout(fitAccountPopoverOnce, 50);
+    setTimeout(fitAccountPopoverOnce, 160);
+  });
+}
+
+function setNodeValueIfChanged(node, next) {
+  if (node.nodeValue === next) return false;
+  node.nodeValue = next;
+  return true;
+}
+
+function softenRunListMarkdown(root, lang) {
+  if (typeof window === "undefined") return;
+  if (!new RegExp("/agents/[^/]+/runs").test(window.location.pathname)) return;
+  const scope = root && root.querySelectorAll ? root : document.body;
+  if (!scope || typeof scope.querySelectorAll !== "function") return;
+  const spans = scope.querySelectorAll("a[href*='/runs'] span.truncate, a[href*='/runs/'] span.truncate");
+  for (const span of spans) {
+    if (shouldSkipNode(span)) continue;
+    const walker = document.createTreeWalker(span, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      const raw = node.nodeValue ?? "";
+      if (lang !== "ko") {
+        if (originalText.has(node)) {
+          setNodeValueIfChanged(node, originalText.get(node));
+          originalText.delete(node);
+          overlayOwned.delete(node);
+        }
+        continue;
+      }
+      const source = originalText.get(node) ?? raw;
+      const trimmed = source.trim();
+      if (!trimmed || !looksLikeMarkdown(trimmed)) continue;
+      const stripped = stripMarkdownPreview(trimmed);
+      if (!stripped || stripped === trimmed) continue;
+      const next = source.replace(trimmed, stripped);
+      if (!originalText.has(node)) originalText.set(node, source);
+      overlayOwned.add(node);
+      setNodeValueIfChanged(node, next);
+    }
+  }
+}
+
+function liftRunPreviewClip(root) {
+  if (typeof window === "undefined") return;
+  if (!new RegExp("/agents(/|$)").test(window.location.pathname)) return;
+  const scope = root && root.querySelectorAll ? root : document.body;
+  if (!scope || typeof scope.querySelectorAll !== "function") return;
+  const nodes = scope.querySelectorAll("a[href*='/runs'] div.overflow-hidden.max-h-16, a[href*='/runs/'] div.overflow-hidden.max-h-16, a[href*='/issues/'] div.overflow-hidden.max-h-16");
+  for (const el of nodes) {
+    if (el instanceof HTMLElement) el.style.maxHeight = "7.5rem";
+  }
+}
+
+function applyLayoutFixes(root, lang = getUiLanguage()) {
+  injectClipFixCss();
+  decorateConnectLinks(root && root.querySelectorAll ? root : document.body);
+  fitAccountPopover();
+  liftRunPreviewClip(root);
+  softenRunListMarkdown(root, lang);
+}
+
 function applyAll() {
   const lang = getUiLanguage();
   applyTree(document.body, lang);
   document.documentElement.lang = lang === "ko" ? "ko" : "en";
+  applyLayoutFixes(document.body, lang);
 }
 
 export function startOverlay() {
@@ -442,9 +618,9 @@ export function startOverlay() {
         }
       }
     }
-    if (skillRoots.size === 0) return;
     applyingOverlay = true;
     try {
+      applyLayoutFixes(document.body, lang);
       for (const root of skillRoots) applySkills(root, lang);
     } finally {
       applyingOverlay = false;
