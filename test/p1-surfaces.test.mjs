@@ -116,3 +116,71 @@ test('P1 board-chat document title translates Conference Room', () => {
   assert.equal(ctx.translatePageTitle('Conference Room • Definish • Paperclip'), '회의실 • Definish • Paperclip');
   assert.equal(ctx.translatePageTitle('Conference Room • Tasks • Definish • Paperclip'), 'Conference Room • 작업 • Definish • Paperclip');
 });
+
+test('P1 host headings stay translated and wiki article h1 is preserved', () => {
+  const board = loadOverlay('/DEF/board-chat');
+  const hostH1 = (ctx, value) => {
+    const node = { nodeType: 3, nodeValue: value, parentElement: { closest: (sel) => String(sel).includes('article header h1') ? null : (String(sel).includes('h1') ? { tagName: 'H1' } : null) } };
+    ctx.translateTextNode(node, 'ko');
+    return node.nodeValue;
+  };
+  assert.equal(hostH1(board, 'Conference Room'), '회의실');
+  assert.equal(hostH1(board, 'Agent Feed'), '에이전트 피드');
+  const issues = loadOverlay('/DEF/issues');
+  assert.equal(hostH1(issues, 'Tasks'), '작업');
+  const wiki = loadOverlay('/DEF/wiki');
+  const pageTitle = { nodeType: 3, nodeValue: 'Ask', parentElement: { closest: (sel) => String(sel).includes('article header h1') ? { tagName: 'H1' } : null } };
+  wiki.translateTextNode(pageTitle, 'ko');
+  assert.equal(pageTitle.nodeValue, 'Ask');
+  const updated = { nodeType: 3, nodeValue: 'Updated 18분 전', parentElement: { closest: () => null } };
+  wiki.translateTextNode(updated, 'ko');
+  assert.equal(updated.nodeValue, '갱신 18분 전');
+  const onThis = { nodeType: 3, nodeValue: 'On this page', parentElement: { closest: (sel) => String(sel).includes('button') ? { tagName: 'BUTTON' } : null } };
+  wiki.translateTextNode(onThis, 'ko');
+  assert.equal(onThis.nodeValue, '이 페이지에서');
+});
+
+test('P1 wiki file-tree document names stay English while Add Content chrome translates', () => {
+  const ctx = loadOverlay('/DEF/wiki');
+  const treeItem = {};
+  const treeName = {
+    closest(sel) {
+      const s = String(sel);
+      if (s.includes('button') || s.includes('[role="tab"]') || s === 'nav' || s.startsWith('nav,')) return null;
+      if (s.includes('[data-file-tree-path]') || s.includes('[role="treeitem"]')) return treeItem;
+      return null;
+    },
+  };
+  const node = { nodeType: 3, nodeValue: 'Add Content', parentElement: treeName };
+  ctx.translateTextNode(node, 'ko');
+  assert.equal(node.nodeValue, 'Add Content');
+  assert.equal(ko('/DEF/wiki', 'Add Content'), '내용 추가');
+});
+
+test('P1 issue-row titles stay English while Done filter chrome translates', () => {
+  const ctx = loadOverlay('/DEF/issues');
+  const group = { querySelector(sel) { return String(sel).includes('data-inbox-issue-link') ? {} : null; } };
+  const titleSpan = {
+    closest(sel) {
+      const s = String(sel);
+      if (s.includes('data-inbox-issue-link')) return null;
+      if (s.includes('span.line-clamp-2')) return titleSpan;
+      if (s.includes('button') || s.includes('nav') || s.includes('[role="tab"]')) return null;
+      if (s.includes('.group')) return group;
+      return null;
+    },
+  };
+  const titleNode = { nodeType: 3, nodeValue: 'Done', parentElement: titleSpan };
+  ctx.translateTextNode(titleNode, 'ko');
+  assert.equal(titleNode.nodeValue, 'Done');
+  const overlay = {
+    closest(sel) { return String(sel).includes('data-inbox-issue-link') ? overlay : null; },
+  };
+  const sr = { nodeType: 3, nodeValue: 'Open DEF-99: Done', parentElement: overlay };
+  ctx.translateTextNode(sr, 'ko');
+  assert.equal(sr.nodeValue, 'Open DEF-99: Done');
+  const filter = { closest() { return null; }, tagName: 'BUTTON' };
+  const filterNode = { nodeType: 3, nodeValue: 'Done', parentElement: filter };
+  ctx.translateTextNode(filterNode, 'ko');
+  assert.equal(filterNode.nodeValue, '완료');
+});

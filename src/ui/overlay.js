@@ -128,13 +128,31 @@ function inApps() {
 }
 
 function isStoredWikiTitle(el) {
-  return Boolean(el?.closest('h1, h2, h3, [data-testid="llm-wiki-page-content-layout"]'));
+  if (!inWiki()) return false;
+  return Boolean(el?.closest('article header h1'));
+}
+function isStoredFileTreeTitle(el) {
+  if (!el) return false;
+  if (el.closest('button, [role="tab"], nav')) return false;
+  return Boolean(el.closest('[role="treeitem"][data-file-tree-path]'));
+}
+function isStoredIssueTitle(el) {
+  if (!el) return false;
+  if (el.closest('[data-inbox-issue-link]')) return true;
+  const titleSpan = el.closest('span.line-clamp-2');
+  if (!titleSpan) return false;
+  if (titleSpan.closest('button, nav, [role="tab"]')) return false;
+  const row = titleSpan.closest('.group');
+  return Boolean(row && typeof row.querySelector === 'function' && row.querySelector('[data-inbox-issue-link]'));
+}
+function isStoredUserContent(el) {
+  return isStoredWikiTitle(el) || isStoredFileTreeTitle(el) || isStoredIssueTitle(el);
 }
 function isWikiChromeControl(el) {
   if (!el || isStoredWikiTitle(el)) return false;
   return Boolean(el.closest('button, [role="tab"], [role="tablist"], nav, [aria-label="On this page"]'));
 }
-const WIKI_UNIQUE_CHROME = new Set(["Add Content", "SHARED WIKI SPACES", "Shared Wiki Spaces", "Edit page", "On this page"]);
+const WIKI_UNIQUE_CHROME = new Set(["Add Content", "SHARED WIKI SPACES", "Shared Wiki Spaces", "Edit page", "On this page", "Updated"]);
 function inWiki() {
   return /\/wiki(\/|$)/.test(window.location.pathname);
 }
@@ -235,6 +253,7 @@ const ISSUE_CHROME = new Set([
 
 function lookup(text, node) {
   const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+  if (isStoredUserContent(el)) return null;
   // System UI only: never translate editable/source content or stored issue prose.
   const systemNotice = Boolean(el?.closest('[data-testid="task-chat-system-notice"], [data-testid="task-chat-system-notice-details"]'));
   const decisionSurface = /\/(decisions|inbox)(\/|$)/.test(window.location.pathname)
@@ -299,6 +318,9 @@ function lookup(text, node) {
     return null;
   }
   if (!skipProse && !isStoredWikiTitle(el)) {
+    if (inWiki() && !isStoredWikiTitle(el) && text.startsWith("Updated ")) {
+      return "갱신 " + text.slice("Updated ".length);
+    }
     if (inWiki() && chromeCatalog.wiki && chromeCatalog.wiki[text] && (isWikiChromeControl(el) || WIKI_UNIQUE_CHROME.has(text))) {
       return chromeCatalog.wiki[text];
     }
