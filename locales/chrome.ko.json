@@ -337,7 +337,8 @@
     "Clear error and return agent to idle": "오류를 지우고 대기 상태로 되돌립니다",
     "Jump to live": "실시간으로",
     "Waiting for transcript...": "기록을 기다리는 중...",
-    "No recent agent runs.": "최근 에이전트 실행이 없습니다."
+    "No recent agent runs.": "최근 에이전트 실행이 없습니다.",
+    "Backlog": "백로그"
   },
   "nav": {
     "Search": "검색",
@@ -944,7 +945,8 @@
     "Jump to live": "실시간으로",
     "Waiting for transcript...": "기록을 기다리는 중...",
     "Nice": "보기 쉽게",
-    "Raw": "원문"
+    "Raw": "원문",
+    "Backlog": "백로그"
   },
   "apps": {
     "Browse": "둘러보기",
@@ -953,6 +955,23 @@
     "Connections": "연결",
     "Advanced setup for developers. Most teams never open this.": "개발자용 고급 설정입니다. 대부분 팀은 열 일이 없습니다.",
     "waiting for your OK": "확인 대기",
-    "Apps": "앱"
+    "Apps": "앱",
+    "Choose an app or connect your own MCP server.": "앱을 고르거나 직접 MCP 서버를 연결하세요.",
+    "Search apps": "앱 검색",
+    "Search apps…": "앱 검색…",
+    "Popular": "인기",
+    "All apps": "모든 앱",
+    "Coming soon": "곧 제공",
+    "Connect →": "연결 →",
+    "Connect": "연결",
+    "Connect your own tool": "내 도구 연결",
+    "Paste the URL from a custom or self-hosted MCP server and review its actions before enabling it.": "직접 만든 MCP 서버나 자체 호스트 서버 URL을 붙여 넣고, 켜기 전에 동작을 확인하세요.",
+    "Gateways": "게이트웨이",
+    "Profiles": "프로필",
+    "Rules": "규칙",
+    "Health": "상태",
+    "Activity": "활동",
+    "Connect your own MCP server": "내 MCP 서버 연결",
+    "Connect with a link": "링크로 연결"
   }
 }

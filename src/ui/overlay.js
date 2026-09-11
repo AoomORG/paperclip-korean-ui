@@ -38,6 +38,7 @@ const originalAttr = new WeakMap();
 let observer = null;
 let started = false;
 const overlayOwned = new WeakSet();
+const overlaySetValues = new WeakMap();
 let applyingOverlay = false;
 
 export function getUiLanguage() {
@@ -177,6 +178,8 @@ function translateRunChrome(text) {
   if (m) return translateDurationChunk(m[1]) + " 후 시간 초과";
   m = text.match(/^Transcript \((\d+)\)$/);
   if (m) return "기록 (" + m[1] + ")";
+  m = text.match(/^Transcript\((\d+)\)$/);
+  if (m) return "기록 (" + m[1] + ")";
   return null;
 }
 
@@ -244,13 +247,14 @@ function lookup(text, node) {
     const runChromeEarly = translateRunChrome(text);
     if (runChromeEarly) return runChromeEarly;
     if (inDashboard()) {
-      const dashTokens = { running: "실행 중", paused: "일시정지", errors: "오류", open: "열림", blocked: "막힘" };
+      const dashTokens = { running: "실행 중", paused: "일시정지", errors: "오류", open: "열림", blocked: "막힘", Backlog: "백로그" };
       if (dashTokens[text]) return dashTokens[text];
       if (chromeCatalog.agents && chromeCatalog.agents[text]) return chromeCatalog.agents[text];
     }
     if (inRuns()) {
       if (text === "failed") return "실패";
       if (text === "blocked") return "막힘";
+      if (text === "error") return "오류";
       if (chromeCatalog.agents && chromeCatalog.agents[text]) return chromeCatalog.agents[text];
     }
     if (inApps() && chromeCatalog.apps && chromeCatalog.apps[text]) return chromeCatalog.apps[text];
@@ -496,11 +500,20 @@ a[href*="agent-connect"] > span:last-of-type {
 }
 a[href*="/runs"] span.truncate,
 a[href*="/runs/"] span.truncate {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: block !important;
+  min-width: 0 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.35 !important;
+}
+a[href*="/runs"]:focus-visible,
+a[href*="/runs/"]:focus-visible {
+  outline: 2px solid var(--ring, #2563eb) !important;
+  outline-offset: -2px !important;
+  background-color: var(--accent, rgba(0, 0, 0, 0.05)) !important;
 }
 `;
 
@@ -599,8 +612,15 @@ function softenRunListMarkdown(root, lang) {
           setNodeValueIfChanged(node, originalText.get(node));
           originalText.delete(node);
           overlayOwned.delete(node);
+          overlaySetValues.delete(node);
         }
         continue;
+      }
+      const prevSoftened = overlaySetValues.get(node);
+      if (originalText.has(node) && prevSoftened != null && raw !== prevSoftened) {
+        originalText.delete(node);
+        overlayOwned.delete(node);
+        overlaySetValues.delete(node);
       }
       const source = originalText.get(node) ?? raw;
       const trimmed = source.trim();
@@ -610,7 +630,51 @@ function softenRunListMarkdown(root, lang) {
       const next = source.replace(trimmed, stripped);
       if (!originalText.has(node)) originalText.set(node, source);
       overlayOwned.add(node);
+      overlaySetValues.set(node, next);
       setNodeValueIfChanged(node, next);
+    }
+  }
+}
+
+function exposeRunSummaryOriginal(root) {
+  if (typeof window === "undefined") return;
+  const scope = root && root.querySelectorAll ? root : document.body;
+  if (!scope || typeof scope.querySelectorAll !== "function") return;
+  const links = scope.querySelectorAll("a[href*='/runs'], a[href*='/runs/']");
+  for (const link of links) {
+    const summarySpan = link.querySelector("span.truncate");
+    const targetNode = summarySpan || link;
+    const walker = document.createTreeWalker(targetNode, NodeFilter.SHOW_TEXT);
+    const parts = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      parts.push(originalText.has(node) ? originalText.get(node) : (node.nodeValue ?? ""));
+    }
+    const full = parts.join("").replace(/\s+/g, " ").trim();
+    if (!full) continue;
+    if (link.getAttribute("data-pc-original-summary") !== full) {
+      link.setAttribute("data-pc-original-summary", full);
+    }
+    if (link.getAttribute("title") !== full) {
+      link.setAttribute("title", full);
+    }
+    if (summarySpan) {
+      if (summarySpan.getAttribute("data-pc-original-summary") !== full) {
+        summarySpan.setAttribute("data-pc-original-summary", full);
+      }
+      if (summarySpan.getAttribute("title") !== full) {
+        summarySpan.setAttribute("title", full);
+      }
+    }
+    const currentAria = link.getAttribute("aria-label");
+    const hasOwnerLabel = link.getAttribute("data-pc-has-summary-label") === "true";
+    if (!currentAria || hasOwnerLabel) {
+      if (currentAria !== full) {
+        link.setAttribute("aria-label", full);
+      }
+      if (!hasOwnerLabel) {
+        link.setAttribute("data-pc-has-summary-label", "true");
+      }
     }
   }
 }
@@ -632,6 +696,7 @@ function applyLayoutFixes(root, lang = getUiLanguage()) {
   fitAccountPopover();
   liftRunPreviewClip(root);
   softenRunListMarkdown(root, lang);
+  exposeRunSummaryOriginal(root);
   applyDocumentTitle(lang);
 }
 
@@ -708,9 +773,18 @@ export function startOverlay() {
     const lang = getUiLanguage();
     const skillRoots = new Set();
     for (const mutation of mutations) {
-      if (mutation.type === "characterData" && overlayOwned.has(mutation.target)) continue;
-      if (mutation.type === "characterData" && mutation.target) {
-        translateTextNode(mutation.target, lang);
+      if (mutation.type === "characterData") {
+        if (overlayOwned.has(mutation.target)) {
+          if (overlaySetValues.get(mutation.target) === mutation.target.nodeValue) {
+            continue;
+          }
+          overlayOwned.delete(mutation.target);
+          originalText.delete(mutation.target);
+          overlaySetValues.delete(mutation.target);
+        }
+        if (mutation.target) {
+          translateTextNode(mutation.target, lang);
+        }
       }
       for (const added of mutation.addedNodes) {
         if (added.nodeType === Node.TEXT_NODE) translateTextNode(added, lang);

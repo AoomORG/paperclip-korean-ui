@@ -29,7 +29,9 @@ function loadOverlay(pathname = '/AOO/agents/agent-7c304493/runs') {
       "\nthis.softenRunListMarkdown = softenRunListMarkdown;" +
       "\nthis.translateTextNode = translateTextNode;" +
       "\nthis.translatePageTitle = translatePageTitle;" +
-      "\nthis.applyDocumentTitle = applyDocumentTitle;",
+      "\nthis.applyDocumentTitle = applyDocumentTitle;" +
+      "\nthis.exposeRunSummaryOriginal = exposeRunSummaryOriginal;" +
+      "\nthis.CLIP_FIX_CSS = CLIP_FIX_CSS;",
     context,
   );
   return context;
@@ -46,6 +48,7 @@ test('P0 run chrome translates Tasks Touched counts', () => {
   assert.equal(ctx.translateRunChrome('18 open, 2 blocked'), '열림 18, 막힘 2');
   assert.equal(ctx.translateRunChrome('Failed after 1 second'), '1초 후 실패');
   assert.equal(ctx.translateRunChrome('Transcript (12)'), '기록 (12)');
+  assert.equal(ctx.translateRunChrome('Transcript(1)'), '기록 (1)');
 });
 
 test('P0 run list markdown preview strips markers without touching plain text', () => {
@@ -257,6 +260,7 @@ test('dashboard and runs chrome labels translate without touching names', () => 
   assert.equal(node('In Review'), '검토 중');
   assert.equal(node('Done'), '완료');
   assert.equal(node('Blocked'), '막힘');
+  assert.equal(node('Backlog'), '백로그');
   assert.equal(node('Failed after 1 second'), '1초 후 실패');
   assert.equal(node('조운영'), '조운영');
 
@@ -283,4 +287,132 @@ test('dashboard and runs chrome labels translate without touching names', () => 
   assert.equal(appNode('Review'), '검토');
   assert.equal(appNode('Developer'), '개발자');
   assert.equal(appNode('Connections'), '연결');
+  assert.equal(appNode('Choose an app or connect your own MCP server.'), '앱을 고르거나 직접 MCP 서버를 연결하세요.');
+  assert.equal(appNode('Popular'), '인기');
+  assert.equal(appNode('All apps'), '모든 앱');
+  assert.equal(appNode('Coming soon'), '곧 제공');
+  assert.equal(appNode('Connect your own tool'), '내 도구 연결');
+  assert.equal(appNode('Gateways'), '게이트웨이');
+  assert.equal(appNode('Profiles'), '프로필');
+  assert.equal(appNode('Rules'), '규칙');
+  assert.equal(appNode('Health'), '상태');
+});
+
+test('P0 #24 CLIP_FIX_CSS wraps run summary and exposes focus-visible', () => {
+  const ctx = loadOverlay('/DEF/agents/agent-123/runs');
+  assert.match(ctx.CLIP_FIX_CSS, /white-space:\s*normal\s*!important/);
+  assert.match(ctx.CLIP_FIX_CSS, /overflow:\s*visible\s*!important/);
+  assert.match(ctx.CLIP_FIX_CSS, /text-overflow:\s*clip\s*!important/);
+  assert.match(ctx.CLIP_FIX_CSS, /word-break:\s*break-word\s*!important/);
+  assert.match(ctx.CLIP_FIX_CSS, /focus-visible/);
+});
+
+test('P0 #24 exposeRunSummaryOriginal updates title without stale and provides accessible label', () => {
+  const ctx = loadOverlay('/DEF/agents/agent-123/runs');
+  const attrs = new Map();
+  const spanAttrs = new Map();
+  const textNode = { nodeType: 3, nodeValue: 'Run summary line 1 and line 2' };
+  const span = {
+    tagName: 'SPAN',
+    className: 'text-xs text-muted-foreground truncate',
+    getAttribute: (k) => spanAttrs.get(k) || null,
+    setAttribute: (k, v) => spanAttrs.set(k, v),
+  };
+  const link = {
+    tagName: 'A',
+    getAttribute: (k) => attrs.get(k) || null,
+    setAttribute: (k, v) => attrs.set(k, v),
+    querySelector: (sel) => (sel === 'span.truncate' ? span : null),
+  };
+  ctx.document.createTreeWalker = () => {
+    let visited = false;
+    return {
+      nextNode: () => {
+        if (!visited) {
+          visited = true;
+          return true;
+        }
+        return false;
+      },
+      currentNode: textNode,
+    };
+  };
+  const root = {
+    querySelectorAll: (sel) => [link],
+  };
+
+  ctx.exposeRunSummaryOriginal(root);
+  assert.equal(attrs.get('title'), 'Run summary line 1 and line 2');
+  assert.equal(attrs.get('data-pc-original-summary'), 'Run summary line 1 and line 2');
+  assert.equal(attrs.get('aria-label'), 'Run summary line 1 and line 2');
+  assert.equal(spanAttrs.get('title'), 'Run summary line 1 and line 2');
+
+  // Verify dynamic DOM update does not stay stale
+  textNode.nodeValue = 'Updated run summary dynamically';
+  ctx.document.createTreeWalker = () => {
+    let visited = false;
+    return {
+      nextNode: () => {
+        if (!visited) {
+          visited = true;
+          return true;
+        }
+        return false;
+      },
+      currentNode: textNode,
+    };
+  };
+  ctx.exposeRunSummaryOriginal(root);
+  assert.equal(attrs.get('title'), 'Updated run summary dynamically');
+  assert.equal(attrs.get('data-pc-original-summary'), 'Updated run summary dynamically');
+  assert.equal(spanAttrs.get('title'), 'Updated run summary dynamically');
+
+  // Native aria-label preservation
+  const nativeAttrs = new Map([['aria-label', 'Pre-existing native run action']]);
+  const nativeLink = {
+    tagName: 'A',
+    getAttribute: (k) => nativeAttrs.get(k) || null,
+    setAttribute: (k, v) => nativeAttrs.set(k, v),
+    querySelector: () => null,
+  };
+  ctx.exposeRunSummaryOriginal({ querySelectorAll: () => [nativeLink] });
+  assert.equal(nativeAttrs.get('aria-label'), 'Pre-existing native run action');
+  assert.equal(nativeAttrs.get('data-pc-has-summary-label'), undefined);
+});
+
+test('P0 #24 dynamic text node markdown update does not use stale originalText cache', () => {
+  const ctx = loadOverlay('/DEF/agents/agent-123/runs');
+  const textNode = { nodeType: 3, nodeValue: '**blocked** initial step' };
+  const span = { nodeType: 1, tagName: 'SPAN', className: 'truncate', closest: () => null };
+  textNode.parentElement = span;
+  ctx.document.createTreeWalker = () => {
+    let visited = false;
+    return {
+      currentNode: null,
+      nextNode() {
+        if (!visited) { visited = true; this.currentNode = textNode; return true; }
+        return false;
+      },
+    };
+  };
+  const root = {
+    querySelectorAll: (sel) => (String(sel).includes('truncate') ? [span] : []),
+  };
+  ctx.softenRunListMarkdown(root, 'ko');
+  assert.equal(textNode.nodeValue, 'blocked initial step');
+
+  // External update from app changing text to new markdown
+  textNode.nodeValue = '**failed** updated step';
+  ctx.document.createTreeWalker = () => {
+    let visited = false;
+    return {
+      currentNode: null,
+      nextNode() {
+        if (!visited) { visited = true; this.currentNode = textNode; return true; }
+        return false;
+      },
+    };
+  };
+  ctx.softenRunListMarkdown(root, 'ko');
+  assert.equal(textNode.nodeValue, 'failed updated step');
 });
