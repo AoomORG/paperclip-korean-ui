@@ -141,6 +141,32 @@ function translateWorkedFor(text) {
 }
 
 function lookup(text, node) {
+  const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+  // System UI only: never translate editable/source content or stored issue prose.
+  const systemNotice = Boolean(el?.closest('[data-testid="task-chat-system-notice"], [data-testid="task-chat-system-notice-details"]'));
+  const decisionSurface = /\/(decisions|inbox)(\/|$)/.test(window.location.pathname)
+    || Boolean(el?.closest('[data-testid="issue-recovery-action-card"], [data-recovery-state], [data-radix-popper-content-wrapper]'));
+  if (systemNotice || (decisionSurface && !el?.closest('.prose, [data-pc-i18n-skip]'))) {
+    const catalog = chromeCatalog.decisions || {};
+    const normalized = text.replace(/\s+/g, " ").replace(/[’]/g, "'");
+    if (catalog[normalized]) return catalog[normalized];
+    if (catalog[text.replace(/[’]/g, "'")]) return catalog[text.replace(/[’]/g, "'")];
+    // The decision feed abbreviates known system messages before rendering.
+    const quoted = normalized.replace(/^[“"]|[”"]$/g, "");
+    const abbreviated = /(?:\.\.\.|…)$/u.test(quoted);
+    const prefix = quoted.replace(/(?:\.\.\.|…)$/u, "");
+    if (/^Board operator: inspect (the run evidence|the evidence),/.test(prefix)) {
+      const key = Object.keys(catalog).find(k => k === quoted || (abbreviated && prefix.length > 100 && k.startsWith(prefix)));
+      if (key) return catalog[key];
+    }
+    let match = normalized.match(/^Blocks (\d+) tasks and needs human attention\.$/);
+    if (match) return `후속 작업 ${match[1]}개가 막혀 있습니다. 담당자의 확인이 필요합니다.`;
+    match = normalized.match(/^(\d+) decisions?$/);
+    if (match) return `결정 ${match[1]}건`;
+    match = normalized.match(/^Recovery in progress · (\d+)\/(\d+)$/);
+    if (match) return `복구 진행 중 · ${match[1]}/${match[2]}`;
+    if (systemNotice) return null;
+  }
   if (!text || STATUS_SKIP.has(text) || isIssueId(text) || isAgentKey(text) || isPathish(text)) {
     return null;
   }
