@@ -591,27 +591,49 @@ function applyLayoutFixes(root, lang = getUiLanguage()) {
 
 let titleOriginal = null;
 let titleTranslated = null;
+let titlePath = null;
 
 function translatePageTitle(raw) {
   const parts = (raw || "").split(" • ");
-  let companyIdx = -1;
-  if (parts.length >= 2 && parts[parts.length - 1] === "Paperclip") {
-    companyIdx = parts.length - 2;
-  }
   const nav = chromeCatalog.nav || {};
+  const resourceParents = new Set([
+    "Projects", "Agents", "Tasks", "Goals", "Routines", "Cases",
+    "Artifacts", "Workspaces", "Pipelines", "Decisions", "Inbox",
+    "Skills", "Org", "Users", "Plugins",
+  ]);
+  let brandIdx = -1;
+  let companyIdx = -1;
+  if (parts.length >= 1 && parts[parts.length - 1] === "Paperclip") {
+    brandIdx = parts.length - 1;
+    if (parts.length === 2) companyIdx = 0;
+    else if (parts.length >= 3) companyIdx = parts.length - 2;
+  }
+  const skip = new Set();
+  if (brandIdx >= 0) skip.add(brandIdx);
+  if (companyIdx >= 0) skip.add(companyIdx);
+  if (companyIdx >= 2 && parts[companyIdx - 1] === parts[companyIdx]) {
+    skip.add(companyIdx - 1);
+  }
   return parts.map((part, index) => {
-    if (index === companyIdx) return part;
-    if (part === "Paperclip" || part === "Aoom" || part === "Definish") return part;
+    if (skip.has(index)) return part;
+    if (part === "Aoom" || part === "Definish") return part;
     if (typeof isIssueId === "function" && isIssueId(part)) return part;
     if (typeof isAgentKey === "function" && isAgentKey(part)) return part;
-    if (nav[part]) return nav[part];
-    return part;
+    if (!nav[part]) return part;
+    const nextKept = parts.find((other, otherIdx) => otherIdx > index && !skip.has(otherIdx));
+    if (nextKept && resourceParents.has(nextKept)) return part;
+    return nav[part];
   }).join(" • ");
 }
 
 function applyDocumentTitle(lang) {
+  const path = typeof window !== "undefined" && window.location ? window.location.pathname : "";
   const current = document.title || "";
-  if (current !== titleTranslated) {
+  const hostChanged = current !== titleTranslated;
+  if (titlePath !== path) {
+    titlePath = path;
+    if (hostChanged) titleOriginal = current;
+  } else if (hostChanged) {
     titleOriginal = current;
   }
   const source = titleOriginal || current;

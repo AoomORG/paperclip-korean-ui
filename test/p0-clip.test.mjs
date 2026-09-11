@@ -28,7 +28,8 @@ function loadOverlay(pathname = '/AOO/agents/agent-7c304493/runs') {
       "\nthis.decorateConnectLinks = decorateConnectLinks;" +
       "\nthis.softenRunListMarkdown = softenRunListMarkdown;" +
       "\nthis.translateTextNode = translateTextNode;" +
-      "\nthis.translatePageTitle = translatePageTitle;",
+      "\nthis.translatePageTitle = translatePageTitle;" +
+      "\nthis.applyDocumentTitle = applyDocumentTitle;",
     context,
   );
   return context;
@@ -169,6 +170,13 @@ test('status beta account and decisions title chrome translate', () => {
   assert.equal(dash.translatePageTitle('Status • Aoom • Paperclip'), '상태 • Aoom • Paperclip');
   assert.equal(dash.translatePageTitle('상태 • Aoom • Paperclip'), '상태 • Aoom • Paperclip');
   assert.equal(dash.translatePageTitle('Paperclip'), 'Paperclip');
+  assert.equal(dash.translatePageTitle('Status • Projects • Aoom • Paperclip'), 'Status • 프로젝트 • Aoom • Paperclip');
+  assert.equal(dash.translatePageTitle('조운영 • Agents • Aoom • Paperclip'), '조운영 • 에이전트 • Aoom • Paperclip');
+  assert.equal(dash.translatePageTitle('Need Status review • Tasks • Aoom • Paperclip'), 'Need Status review • 작업 • Aoom • Paperclip');
+  assert.equal(dash.translatePageTitle('Status • Paperclip'), 'Status • Paperclip');
+  assert.equal(dash.translatePageTitle('Apps • Aoom • Aoom • Paperclip'), '앱 • Aoom • Aoom • Paperclip');
+  assert.equal(dash.translatePageTitle('Settings • Aoom • Aoom • Paperclip'), '설정 • Aoom • Aoom • Paperclip');
+  assert.equal(dash.translatePageTitle('Connect an app • Apps • Aoom • Aoom • Paperclip'), 'Connect an app • 앱 • Aoom • Aoom • Paperclip');
   const empty = { nodeType: 3, nodeValue: 'No status cards yet', parentElement: { closest: () => null } };
   dash.translateTextNode(empty, 'ko');
   assert.match(empty.nodeValue, /상태 카드/);
@@ -196,4 +204,37 @@ test('document title remembers original and does not invert unknown Korean compa
   assert.equal(ctx3.document.title, '상태 • Aoom • Paperclip');
   ctx3.applyDocumentTitle('en');
   assert.equal(ctx3.document.title, 'Status • Aoom • Paperclip');
+});
+
+test('document title preserves dynamic names and restores originals across routes', () => {
+  const ctx = loadOverlay('/AOO');
+  ctx.document.title = 'Status • Paperclip';
+  ctx.applyDocumentTitle('ko');
+  assert.equal(ctx.document.title, 'Status • Paperclip');
+
+  ctx.window.location.pathname = '/AOO/status';
+  ctx.document.title = 'Status • Aoom • Paperclip';
+  ctx.applyDocumentTitle('ko');
+  assert.equal(ctx.document.title, '상태 • Aoom • Paperclip');
+
+  ctx.window.location.pathname = '/AOO/projects/status-project';
+  ctx.document.title = 'Status • Projects • Aoom • Paperclip';
+  ctx.applyDocumentTitle('ko');
+  assert.equal(ctx.document.title, 'Status • 프로젝트 • Aoom • Paperclip');
+  ctx.applyDocumentTitle('en');
+  assert.equal(ctx.document.title, 'Status • Projects • Aoom • Paperclip');
+
+  ctx.window.location.pathname = '/AOO/apps';
+  ctx.document.title = 'Apps • Aoom • Aoom • Paperclip';
+  ctx.applyDocumentTitle('ko');
+  assert.equal(ctx.document.title, '앱 • Aoom • Aoom • Paperclip');
+  ctx.applyDocumentTitle('en');
+  assert.equal(ctx.document.title, 'Apps • Aoom • Aoom • Paperclip');
+
+  ctx.window.location.pathname = '/AOO/agents/agent-7c304493';
+  ctx.document.title = '조운영 • Agents • Aoom • Paperclip';
+  ctx.applyDocumentTitle('ko');
+  assert.equal(ctx.document.title, '조운영 • 에이전트 • Aoom • Paperclip');
+  ctx.applyDocumentTitle('en');
+  assert.equal(ctx.document.title, '조운영 • Agents • Aoom • Paperclip');
 });
