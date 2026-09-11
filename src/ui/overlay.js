@@ -611,6 +611,16 @@ a[href*="/runs/"]:focus-visible {
   margin: 0 !important;
   font: inherit !important;
 }
+html.pc-ui16-board-chat #main-content {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+html.pc-ui16-board-chat #main-content > div.flex.flex-col {
+  margin: 0 !important;
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+}
 `;
 
 function looksLikeMarkdown(text) {
@@ -982,6 +992,254 @@ function scheduleLayoutFixes(lang) {
   });
 }
 
+
+function inBoardChat() {
+  return /\/board-chat(\/|$)/.test(window.location.pathname);
+}
+
+const boardChatStylePrev = new WeakMap();
+
+function rememberInline(el, prop) {
+  const raw = el.style.getPropertyValue(prop);
+  return raw ? { value: raw, priority: el.style.getPropertyPriority(prop) } : null;
+}
+
+function applyRemembered(el, props) {
+  let bag = boardChatStylePrev.get(el);
+  if (!bag) {
+    bag = {};
+    boardChatStylePrev.set(el, bag);
+  }
+  for (const [prop, next] of Object.entries(props)) {
+    if (!(prop in bag)) bag[prop] = rememberInline(el, prop);
+    el.style.setProperty(prop, next, 'important');
+  }
+}
+function restoreRemembered(el, props) {
+  const bag = boardChatStylePrev.get(el);
+  if (!bag) return;
+  for (const prop of props) {
+    if (!(prop in bag)) continue;
+    const prev = bag[prop];
+    if (!prev) el.style.removeProperty(prop);
+    else el.style.setProperty(prop, prev.value, prev.priority || '');
+    delete bag[prop];
+  }
+}
+
+function restoreBoardChatLayout() {
+  document.documentElement.classList.remove('pc-ui16-board-chat');
+  const main = document.getElementById('main-content');
+  const nodes = new Set();
+  if (main) nodes.add(main);
+  for (const el of document.querySelectorAll('[data-pc-ui16-board]')) nodes.add(el);
+  for (const el of nodes) {
+    const bag = boardChatStylePrev.get(el);
+    if (!bag) continue;
+    for (const [prop, prev] of Object.entries(bag)) {
+      if (!prev) el.style.removeProperty(prop);
+      else el.style.setProperty(prop, prev.value, prev.priority || '');
+    }
+    boardChatStylePrev.delete(el);
+    el.removeAttribute('data-pc-ui16-board');
+  }
+}
+
+function boardChatHasMessages() {
+  const main = document.getElementById('main-content');
+  if (!main) return false;
+  if (main.querySelector('a[href^="#comment-"]')) return true;
+  if (main.querySelector('.flex.justify-end .bg-blue-600, .justify-end .bg-blue-600')) return true;
+  return false;
+}
+
+function boardEmptyGuideText() {
+  return getUiLanguage() === 'en'
+    ? 'There are no messages yet. Type below to start the conversation.'
+    : '아직 대화가 없습니다. 아래에 메시지를 입력해 대화를 시작하세요.';
+}
+
+function clearBoardEmptyGuide() {
+  const main = document.getElementById('main-content');
+  document.getElementById('pc-ui16-board-empty-guide')?.remove();
+  if (!main) return;
+  for (const el of main.querySelectorAll('[data-pc-ui16-hidden-intro-typing]')) {
+    el.style.removeProperty('display');
+    el.removeAttribute('data-pc-ui16-hidden-intro-typing');
+  }
+}
+
+function syncBoardEmptyGuide() {
+  const main = document.getElementById('main-content');
+  if (!inBoardChat() || !main) {
+    clearBoardEmptyGuide();
+    return { emptyUnassigned: false, hasMessages: false };
+  }
+  const hasMessages = boardChatHasMessages();
+  const text = main.innerText || '';
+  const welcome = /Welcome to |I've read through what you shared/.test(text);
+  const orgNone = /No organization selected/.test(text);
+  const introTyping = main.querySelector('.typing-dots[aria-label="typing"]');
+  const emptyConversation = !hasMessages && !welcome && !orgNone;
+  if (hasMessages || welcome || orgNone || !emptyConversation) {
+    clearBoardEmptyGuide();
+    return { emptyUnassigned: false, hasMessages, welcome, orgNone };
+  }
+  if (introTyping && !hasMessages) {
+    const intro = introTyping.closest('.flex.justify-start');
+    if (intro instanceof HTMLElement && intro.getAttribute('data-pc-ui16-hidden-intro-typing') !== 'true') {
+      intro.setAttribute('data-pc-ui16-hidden-intro-typing', 'true');
+      intro.style.setProperty('display', 'none');
+    }
+  }
+  let box = document.getElementById('pc-ui16-board-empty-guide');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'pc-ui16-board-empty-guide';
+    box.setAttribute('data-pc-i18n-skip', 'true');
+    box.setAttribute('data-pc-ui16-board-empty', 'true');
+    box.style.cssText = 'margin:0.5rem 0 1rem;padding:0.9rem 1rem;border:1px solid var(--border, rgba(127,127,127,0.35));border-radius:12px;max-width:36rem;font-size:14px;line-height:1.45;';
+    const list = main.querySelector('.flex.flex-col.gap-4');
+    (list || main).appendChild(box);
+  }
+  const nextGuide = boardEmptyGuideText();
+  if (box.textContent !== nextGuide) box.textContent = nextGuide;
+  return { emptyUnassigned: true, hasMessages: false, welcome: false, orgNone: false };
+}
+
+function mobileBoardNav() {
+  const candidates = [...document.querySelectorAll('nav, footer')];
+  return candidates.find((el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 200 && r.height > 24 && r.height < 140 && r.bottom >= window.innerHeight - 16 && r.top > window.innerHeight - 160;
+  }) || null;
+}
+
+const BOARD_SPLIT_MIN_PANE_PX = 280;
+const BOARD_SPLIT_DIVIDER_PX = 12;
+
+function findBoardChatSplit(main, textarea) {
+  if (!main || !textarea) return null;
+  const separator = main.querySelector('[role="separator"][aria-orientation="vertical"]')
+    || main.querySelector('[role="separator"]');
+  if (!(separator instanceof HTMLElement)) return null;
+  const row = separator.parentElement;
+  if (!(row instanceof HTMLElement) || !row.contains(textarea)) return null;
+  const kids = [];
+  for (const kid of row.children) {
+    if (kid instanceof HTMLElement) kids.push(kid);
+  }
+  const chatPane = kids.find((el) => el.contains(textarea));
+  if (!(chatPane instanceof HTMLElement) || chatPane === separator) return null;
+  const feed = kids.find((el) => el !== chatPane && el !== separator)
+    || (separator.nextElementSibling instanceof HTMLElement ? separator.nextElementSibling : null);
+  return { row, chatPane, resizer: separator, feed };
+}
+
+function findBoardChatFeedToggle(main) {
+  if (!main) return null;
+  const buttons = main.querySelectorAll('button');
+  for (const btn of buttons) {
+    const label = (btn.getAttribute('aria-label') || '').toLowerCase();
+    if (!label.includes('feed') && !label.includes('피드')) continue;
+    let wrap = btn.parentElement;
+    while (wrap && wrap !== main) {
+      const cls = wrap.getAttribute('class') || '';
+      if (cls.split(/\s+/).includes('md:hidden')) return { button: btn, wrap };
+      wrap = wrap.parentElement;
+    }
+  }
+  return null;
+}
+
+function applyBoardChatSplit(split, feedToggle, singlePane) {
+  if (split) {
+    split.row.setAttribute('data-pc-ui16-board', 'split-row');
+    split.chatPane.setAttribute('data-pc-ui16-board', 'chat-pane');
+    split.resizer.setAttribute('data-pc-ui16-board', 'resizer');
+    if (split.feed) split.feed.setAttribute('data-pc-ui16-board', 'feed');
+    if (singlePane) {
+      applyRemembered(split.chatPane, { width: '100%', flex: '1 1 auto', 'min-width': '0px' });
+      applyRemembered(split.resizer, { display: 'none' });
+      if (split.feed) applyRemembered(split.feed, { display: 'none' });
+    } else {
+      restoreRemembered(split.chatPane, ['width', 'flex', 'min-width']);
+      restoreRemembered(split.resizer, ['display']);
+      if (split.feed) restoreRemembered(split.feed, ['display']);
+    }
+  }
+  if (feedToggle && feedToggle.wrap instanceof HTMLElement) {
+    feedToggle.wrap.setAttribute('data-pc-ui16-board', 'feed-toggle');
+    if (singlePane) applyRemembered(feedToggle.wrap, { display: 'block' });
+    else restoreRemembered(feedToggle.wrap, ['display']);
+  }
+}
+
+function fitBoardChatLayout() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+  if (!inBoardChat()) {
+    restoreBoardChatLayout();
+    clearBoardEmptyGuide();
+    return;
+  }
+  document.documentElement.classList.add('pc-ui16-board-chat');
+  const main = document.getElementById('main-content');
+  const ta = document.querySelector('#main-content textarea');
+  if (!main) return;
+  const sticky = main.parentElement && main.parentElement.previousElementSibling;
+  const top = Math.max(sticky instanceof HTMLElement ? sticky.getBoundingClientRect().bottom : 0, main.getBoundingClientRect().top, 48);
+  const nav = mobileBoardNav();
+  const vv = window.visualViewport;
+  const viewBottom = vv ? Math.floor(vv.offsetTop + vv.height) : window.innerHeight;
+  const navTop = nav ? Math.floor(nav.getBoundingClientRect().top) : viewBottom;
+  const bottomLimit = Math.min(viewBottom, navTop);
+  const avail = Math.max(240, bottomLimit - top);
+  applyRemembered(main, { height: avail + 'px', 'max-height': avail + 'px', 'padding-bottom': '0px' });
+  if (ta) {
+    let shell = ta.parentElement;
+    while (shell && shell !== main) {
+      const style = window.getComputedStyle(shell);
+      if (parseFloat(style.marginTop) < 0) break;
+      shell = shell.parentElement;
+    }
+    if (shell instanceof HTMLElement && shell !== main) {
+      shell.setAttribute('data-pc-ui16-board', 'shell');
+      applyRemembered(shell, { margin: '0px', height: '100%', 'max-height': '100%', 'min-height': '0px' });
+    }
+    let pane = ta.parentElement;
+    while (pane && pane !== main) {
+      const style = window.getComputedStyle(pane);
+      if (style.position === 'relative') break;
+      pane = pane.parentElement;
+    }
+    if (pane instanceof HTMLElement) {
+      pane.setAttribute('data-pc-ui16-board', 'pane');
+      applyRemembered(pane, { height: '100%', 'min-height': '0px' });
+      restoreRemembered(pane, ['width', 'flex']);
+    }
+    let dock = ta.parentElement;
+    while (dock && dock !== main) {
+      const style = window.getComputedStyle(dock);
+      if (style.position === 'absolute') break;
+      dock = dock.parentElement;
+    }
+    if (dock instanceof HTMLElement) {
+      dock.setAttribute('data-pc-ui16-board', 'dock');
+      applyRemembered(dock, { top: 'auto', bottom: '0px', height: 'auto', 'max-height': 'none' });
+    }
+    const split = findBoardChatSplit(main, ta);
+    const feedToggle = findBoardChatFeedToggle(main);
+    const rowW = split ? split.row.getBoundingClientRect().width : 0;
+    const singlePane = Boolean(
+      split && (rowW < (BOARD_SPLIT_MIN_PANE_PX * 2 + BOARD_SPLIT_DIVIDER_PX)
+        || (window.innerWidth >= 768 && window.innerHeight <= 500)),
+    );
+    applyBoardChatSplit(split, feedToggle, singlePane);
+  }
+  const empty = syncBoardEmptyGuide();
+  document.documentElement.classList.toggle('pc-ui16-board-chat-has-messages', empty.hasMessages);
+}
+
 function applyLayoutFixes(root, lang = getUiLanguage()) {
   injectClipFixCss();
   decorateConnectLinks(root && root.querySelectorAll ? root : document.body);
@@ -990,6 +1248,7 @@ function applyLayoutFixes(root, lang = getUiLanguage()) {
   softenRunListMarkdown(root, lang);
   exposeRunSummaryOriginal(root);
   mountRunOriginalSummary();
+  fitBoardChatLayout();
   applyDocumentTitle(lang);
 }
 
@@ -1137,4 +1396,9 @@ export function startOverlay() {
   }
   window.addEventListener("paperclip-ui-language", applyAll);
   window.addEventListener("popstate", applyAll);
+  window.addEventListener("resize", () => scheduleLayoutFixes(getUiLanguage()));
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", () => scheduleLayoutFixes(getUiLanguage()));
+    window.visualViewport.addEventListener("scroll", () => scheduleLayoutFixes(getUiLanguage()));
+  }
 }
