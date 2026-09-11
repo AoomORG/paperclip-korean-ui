@@ -56,14 +56,26 @@ test('P1 issues chrome #17', () => {
 
 test('P1 wiki chrome #20', () => {
   const path = '/DEF/wiki';
-  assert.equal(ko(path, 'Ask'), '질문');
+  const ctx = loadOverlay(path);
+  const tab = (value) => {
+    const node = { nodeType: 3, nodeValue: value, parentElement: { closest: (sel) => String(sel).includes('[role="tab"]') || String(sel).includes('button') ? { tagName: 'BUTTON' } : null } };
+    ctx.translateTextNode(node, 'ko');
+    return node.nodeValue;
+  };
+  const heading = (value) => {
+    const node = { nodeType: 3, nodeValue: value, parentElement: { closest: (sel) => String(sel).includes('h1') ? { tagName: 'H1' } : null } };
+    ctx.translateTextNode(node, 'ko');
+    return node.nodeValue;
+  };
+  assert.equal(tab('Ask'), '질문');
+  assert.equal(tab('History'), '기록');
+  assert.equal(heading('Ask'), 'Ask');
+  assert.equal(heading('History'), 'History');
   assert.equal(ko(path, 'Add Content'), '내용 추가');
   assert.equal(ko(path, 'SHARED WIKI SPACES'), '공유 위키 공간');
   assert.equal(ko(path, 'Shared Wiki Spaces'), '공유 위키 공간');
-  assert.equal(ko(path, 'Edit page'), '페이지 편집');
-  assert.equal(ko(path, 'Updated'), '갱신');
+  assert.equal(tab('Edit page'), '페이지 편집');
   assert.equal(ko(path, 'On this page'), '이 페이지에서');
-  assert.equal(ko(path, 'History'), '기록');
   assert.equal(ko('/DEF/issues', 'Ask'), 'Ask');
   assert.equal(ko('/DEF/issues', 'History'), 'History');
 });
@@ -73,4 +85,34 @@ test('P1 settings title company duplicate #19', () => {
   assert.equal(ctx.translatePageTitle('설정 • Definish • Definish • Paperclip'), '설정 • Definish • Paperclip');
   assert.equal(ctx.translatePageTitle('Settings • Definish • Definish • Paperclip'), '설정 • Definish • Paperclip');
 });
+test('P1 stored wiki prose and issue titles stay English', () => {
+  const ctx = loadOverlay('/DEF/wiki');
+  const proseClosest = (sel) => String(sel).includes('.prose') ? {} : null;
+  for (const value of ['Ask', 'History', 'Done', 'Backlog']) {
+    const node = { nodeType: 3, nodeValue: value, parentElement: { closest: proseClosest } };
+    ctx.translateTextNode(node, 'ko');
+    assert.equal(node.nodeValue, value, value);
+  }
+});
 
+test('P1 textarea placeholder translates while value stays', () => {
+  const ctx = loadOverlay('/DEF/board-chat');
+  const attrs = { placeholder: 'Ask anything about your organization...' };
+  const el = {
+    hasAttribute: (name) => Object.prototype.hasOwnProperty.call(attrs, name),
+    getAttribute: (name) => attrs[name] ?? null,
+    setAttribute: (name, value) => { attrs[name] = value; },
+    closest: () => null,
+  };
+  ctx.translateAttrs(el, 'ko');
+  assert.equal(attrs.placeholder, '조직에 대해 무엇이든 물어보세요...');
+  const text = { nodeType: 3, nodeValue: 'Ask anything about your organization...', parentElement: { closest: (sel) => String(sel).includes('textarea') ? {} : null, tagName: 'TEXTAREA' } };
+  ctx.translateTextNode(text, 'ko');
+  assert.equal(text.nodeValue, 'Ask anything about your organization...');
+});
+
+test('P1 board-chat document title translates Conference Room', () => {
+  const ctx = loadOverlay('/DEF/board-chat');
+  assert.equal(ctx.translatePageTitle('Conference Room • Definish • Paperclip'), '회의실 • Definish • Paperclip');
+  assert.equal(ctx.translatePageTitle('Conference Room • Tasks • Definish • Paperclip'), 'Conference Room • 작업 • Definish • Paperclip');
+});

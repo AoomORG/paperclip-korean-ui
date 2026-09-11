@@ -1,5 +1,5 @@
 const STORAGE_KEY = "paperclip.uiLanguage";
-const SKIP_SELECTOR = [
+const SKIP_TEXT_SELECTOR = [
   "code",
   "pre",
   "kbd",
@@ -12,6 +12,20 @@ const SKIP_SELECTOR = [
   ".cm-editor",
   ".monaco-editor",
   "[data-pc-i18n-skip]",
+  "input",
+  "[role='textbox']",
+].join(",");
+const SKIP_ATTR_SELECTOR = [
+  "code",
+  "pre",
+  "kbd",
+  "samp",
+  "script",
+  "style",
+  ".cm-editor",
+  ".monaco-editor",
+  "[data-pc-i18n-skip]",
+  ".prose",
 ].join(",");
 const STATUS_SKIP = new Set([
   "todo",
@@ -72,7 +86,7 @@ function isPathish(text) {
 function shouldSkipNode(node) {
   const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
   if (!el) return true;
-  if (el.closest(SKIP_SELECTOR)) return true;
+  if (el.closest(SKIP_TEXT_SELECTOR)) return true;
   if (el.closest("[data-language-toggle]")) return true;
   return false;
 }
@@ -113,6 +127,14 @@ function inApps() {
   return /\/apps(\/|$)/.test(window.location.pathname);
 }
 
+function isStoredWikiTitle(el) {
+  return Boolean(el?.closest('h1, h2, h3, [data-testid="llm-wiki-page-content-layout"]'));
+}
+function isWikiChromeControl(el) {
+  if (!el || isStoredWikiTitle(el)) return false;
+  return Boolean(el.closest('button, [role="tab"], [role="tablist"], nav, [aria-label="On this page"]'));
+}
+const WIKI_UNIQUE_CHROME = new Set(["Add Content", "SHARED WIKI SPACES", "Shared Wiki Spaces", "Edit page", "On this page"]);
 function inWiki() {
   return /\/wiki(\/|$)/.test(window.location.pathname);
 }
@@ -276,8 +298,12 @@ function lookup(text, node) {
   if (!text || STATUS_SKIP.has(text) || isIssueId(text) || isAgentKey(text) || isPathish(text)) {
     return null;
   }
-  if (inWiki() && chromeCatalog.wiki && chromeCatalog.wiki[text]) return chromeCatalog.wiki[text];
-  if (chromeCatalog.global && chromeCatalog.global[text]) return chromeCatalog.global[text];
+  if (!skipProse && !isStoredWikiTitle(el)) {
+    if (inWiki() && chromeCatalog.wiki && chromeCatalog.wiki[text] && (isWikiChromeControl(el) || WIKI_UNIQUE_CHROME.has(text))) {
+      return chromeCatalog.wiki[text];
+    }
+    if (chromeCatalog.global && chromeCatalog.global[text]) return chromeCatalog.global[text];
+  }
   if (chromeCatalog.dashboard && chromeCatalog.dashboard[text]) return chromeCatalog.dashboard[text];
   if (text.startsWith("Open actions for ")) {
     return "작업 열기: " + text.slice("Open actions for ".length);
@@ -361,8 +387,14 @@ function translateTextNode(node, lang) {
   node.nodeValue = raw.replace(trimmed, translated);
 }
 
+function shouldSkipAttrs(el) {
+  if (!el) return true;
+  if (el.closest(SKIP_ATTR_SELECTOR)) return true;
+  return false;
+}
+
 function translateAttrs(el, lang) {
-  if (shouldSkipNode(el)) return;
+  if (shouldSkipAttrs(el)) return;
   if (el.getAttribute?.("data-pc-original-summary") || el.closest?.("nav a[href*='/runs'], nav a[href*='/runs/']")) return;
   for (const attr of ATTRS) {
     if (!el.hasAttribute(attr)) continue;
@@ -976,10 +1008,11 @@ function translatePageTitle(raw) {
     if (part === "Aoom" || part === "Definish") return part;
     if (typeof isIssueId === "function" && isIssueId(part)) return part;
     if (typeof isAgentKey === "function" && isAgentKey(part)) return part;
-    if (!nav[part]) return part;
+    const translated = nav[part] || (chromeCatalog.global && chromeCatalog.global[part]);
+    if (!translated) return part;
     const nextKept = parts.find((other, otherIdx) => otherIdx > index && !skip.has(otherIdx));
     if (nextKept && resourceParents.has(nextKept)) return part;
-    return nav[part];
+    return translated;
   }).join(" • ");
 }
 
