@@ -529,7 +529,13 @@ a[href*="/runs/"]:focus-visible {
 }
 [data-pc-run-original] {
   display: block !important;
-  max-width: 100%;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  flex: 0 0 auto !important;
+  align-self: stretch !important;
+  grid-column: 1 / -1 !important;
+  box-sizing: border-box !important;
   margin: 0.75rem 0 1rem !important;
   padding: 0.75rem 0.9rem !important;
   border: 1px solid var(--border, rgba(127,127,127,0.35));
@@ -537,6 +543,9 @@ a[href*="/runs/"]:focus-visible {
 }
 [data-pc-run-original-text] {
   display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
   white-space: pre-wrap !important;
   overflow: visible !important;
   text-overflow: clip !important;
@@ -765,11 +774,31 @@ function renderRunOriginalPanel(rec) {
   el.setAttribute("data-pc-run-original-field", rec.field || "");
   el.setAttribute("data-pc-run-original-len", String(rec.text.length));
   runOriginalMountedId = rec.runId;
-  if (el.isConnected) return;
+  placeRunOriginalPanel(el);
+}
+
+function findAgentPageHeaderRow() {
+  const heading = document.querySelector("main h1, main h2, h1, h2");
+  if (!heading) return null;
+  let el = heading.parentElement;
+  while (el && el !== document.body) {
+    const className = String(el.className || "");
+    if (className.includes("justify-between") && el.querySelector("button")) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
+function placeRunOriginalPanel(el) {
+  const headerRow = findAgentPageHeaderRow();
+  if (headerRow && headerRow.parentElement) {
+    if (el.previousElementSibling === headerRow && el.parentElement === headerRow.parentElement) return;
+    headerRow.insertAdjacentElement("afterend", el);
+    return;
+  }
   const main = document.querySelector("main") || document.body;
-  const heading = main.querySelector?.("h1, h2");
-  if (heading) heading.insertAdjacentElement("afterend", el);
-  else main.prepend(el);
+  if (el.parentElement === main) return;
+  main.appendChild(el);
 }
 
 function mountRunOriginalSummary() {

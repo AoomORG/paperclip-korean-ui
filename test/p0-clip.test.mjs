@@ -311,6 +311,7 @@ test('P0 #24 CLIP_FIX_CSS wraps run summary and exposes focus-visible', () => {
   assert.match(ctx.CLIP_FIX_CSS, /word-break:\s*break-word\s*!important/);
   assert.match(ctx.CLIP_FIX_CSS, /focus-visible/);
   assert.match(ctx.CLIP_FIX_CSS, /\[data-pc-run-original-text\]/);
+  assert.match(ctx.CLIP_FIX_CSS, /\[data-pc-run-original\][\s\S]*width:\s*100%\s*!important/);
 });
 
 test('P0 #24 exposeRunSummaryOriginal updates title without stale and provides accessible label', () => {

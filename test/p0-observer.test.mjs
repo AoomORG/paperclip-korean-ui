@@ -281,3 +281,53 @@ test('late first-run 200 does not overwrite a later same-id 403', async () => {
     assert.equal(result.afterLate.includes('OUTDATED_A_RESPONSE'), false);
   });
 });
+
+test('run original panel sits after the header row and keeps heading/buttons width', async () => {
+  await withPage(async (page) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const runA = 'be7ab0fd-d415-42da-8a01-03ea61a83a7b';
+    const summary = 'OC 댓글은 창업자 확인을 기다리라는 접수입니다. ' + '확인 카드가 아직 유효한지만 대조한 뒤 in_review를 유지합니다.'.repeat(8);
+    const result = await page.evaluate(async ({ overlaySource, chromeCatalog, runA, summary }) => {
+      window.localStorage.setItem('paperclip.uiLanguage', 'ko');
+      history.replaceState({}, '', '/DEF/agents/a-def-8f083281/runs/' + runA);
+      document.body.innerHTML = '<main style="width:1280px"><div class="page"><div class="flex items-center justify-between gap-2" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div class="flex items-center gap-3 min-w-0" style="display:flex;align-items:center;min-width:0"><h2 style="font-size:24px;white-space:nowrap">A박기획DEF</h2></div><div class="shrink-0" style="display:flex;gap:8px"><button>작업 배정</button><button>하트비트 실행</button><button>한</button><button>EN</button></div></div><section id="run-body" style="width:100%">상세 본문</section></div></main>';
+      window.fetch = async (input) => {
+        if (String(input) !== '/api/heartbeat-runs/' + runA) throw new Error('unexpected fetch ' + input);
+        return { ok: true, status: 200, json: async () => ({ id: runA, resultJson: { summary } }) };
+      };
+      const script = document.createElement('script');
+      script.textContent = 'const chromeCatalog = ' + chromeCatalog + ';\nconst skillsCatalog = {};\n' + overlaySource + '\nwindow.startOverlay = startOverlay;';
+      document.documentElement.appendChild(script);
+      window.startOverlay();
+      await new Promise((r) => setTimeout(r, 80));
+      const header = document.querySelector('.justify-between');
+      const heading = document.querySelector('h2');
+      const panel = document.querySelector('[data-pc-run-original]');
+      const pre = document.querySelector('[data-pc-run-original-text]');
+      const headerRect = header.getBoundingClientRect();
+      const headingRect = heading.getBoundingClientRect();
+      const panelRect = panel.getBoundingClientRect();
+      const buttons = [...header.querySelectorAll('button')].map((b) => b.textContent.trim());
+      return {
+        insideHeader: Boolean(header.contains(panel)),
+        afterHeader: panel.previousElementSibling === header,
+        headingText: heading.textContent,
+        headingWidth: Math.round(headingRect.width),
+        headerHeight: Math.round(headerRect.height),
+        panelWidth: Math.round(panelRect.width),
+        panelTop: Math.round(panelRect.top),
+        headerBottom: Math.round(headerRect.bottom),
+        buttons,
+        original: pre.textContent === summary,
+      };
+    }, { overlaySource, chromeCatalog, runA, summary });
+    assert.equal(result.insideHeader, false);
+    assert.equal(result.afterHeader, true);
+    assert.equal(result.headingText, 'A박기획DEF');
+    assert.ok(result.headingWidth > 80, 'heading width ' + result.headingWidth);
+    assert.ok(result.panelWidth > 600, 'panel width ' + result.panelWidth);
+    assert.ok(result.panelTop >= result.headerBottom - 1);
+    assert.deepEqual(result.buttons, ['작업 배정', '하트비트 실행', '한', 'EN']);
+    assert.equal(result.original, true);
+  });
+});
