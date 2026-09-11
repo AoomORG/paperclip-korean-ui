@@ -219,6 +219,16 @@ function lookup(text, node) {
   if (text.startsWith("Open actions for ")) {
     return "작업 열기: " + text.slice("Open actions for ".length);
   }
+  if (text.startsWith("Star ")) {
+    return "즐겨찾기 " + text.slice("Star ".length);
+  }
+  if (text.startsWith("Unstar ")) {
+    return "즐겨찾기 해제 " + text.slice("Unstar ".length);
+  }
+  if (text.startsWith("Idle past ") && text.includes("kept off the queue")) {
+    const m = text.match(/^Idle past (\d+) days/);
+    if (m) return m[1] + "일 넘게 멈춰 대기열에서 빼 둔 항목입니다. 다시 보이게 할 것은 남겨 두세요.";
+  }
   if (text.startsWith("Change status (current: ") && text.endsWith(")")) {
     const inner = text.slice("Change status (current: ".length, -1);
     return "상태 변경 (현재: " + inner + ")";

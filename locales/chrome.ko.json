@@ -177,7 +177,18 @@
     "Normalized cause": "정규화 원인",
     "Detected progress": "확인된 진행",
     "one corrective handoff wake queued": "교정 인계 실행 1건이 대기열에 있습니다",
-    "Auto mode": "자동 모드"
+    "Auto mode": "자동 모드",
+    "Aging": "오래됨",
+    "Decide now": "지금 결정",
+    "Disable": "끄기",
+    "Enable": "켜기",
+    "Not now?": "나중에",
+    "view run": "실행 보기",
+    "Could not exclude": "제외하지 못했습니다",
+    "Could not update seeding": "대기열 설정을 바꾸지 못했습니다",
+    "Please try again.": "다시 시도해 주세요.",
+    "Reason (optional)…": "사유(선택)…",
+    "Removed from queue": "대기열에서 제거됨"
   },
   "global": {
     "New Task": "새 작업",
@@ -299,7 +310,16 @@
     "Back to runs": "실행 목록으로",
     "No runs yet.": "아직 실행이 없습니다.",
     "See All": "모두 보기",
-    "Latest Run": "최근 실행"
+    "Latest Run": "최근 실행",
+    "Switch to dark mode": "어두운 모드로",
+    "Switch to light mode": "밝은 모드로",
+    "Toggle the app appearance.": "화면 모양을 바꿉니다.",
+    "Last restarted": "마지막 재시작",
+    "Running commit": "실행 중 커밋",
+    "Checkout state": "체크아웃 상태",
+    "Change status unavailable": "변경 상태를 확인할 수 없음",
+    "Source build": "소스 빌드",
+    "Couldn't save — retry": "저장하지 못했습니다. 다시 시도하세요"
   },
   "nav": {
     "Search": "검색",
@@ -375,7 +395,8 @@
     "cannot expand it": "넓힐 수는 없습니다",
     "— everything else is blocked by default.": "— 나머지는 기본적으로 차단됩니다.",
     "Installed apps load tools into": "설치된 앱은 도구를",
-    "'s context on every run. Permitted-only apps do not add context cost.": " 컨텍스트에 매 실행마다 넣습니다. 허용만 된 앱은 컨텍스트 비용을 추가하지 않습니다."
+    "'s context on every run. Permitted-only apps do not add context cost.": " 컨텍스트에 매 실행마다 넣습니다. 허용만 된 앱은 컨텍스트 비용을 추가하지 않습니다.",
+    "Source build": "소스 빌드"
   },
   "settings": {
     "General": "일반",
@@ -886,6 +907,14 @@
     "Back to runs": "실행 목록으로",
     "No runs yet.": "아직 실행이 없습니다.",
     "Star": "즐겨찾기",
-    "See All": "모두 보기"
+    "See All": "모두 보기",
+    "Unstar": "즐겨찾기 해제",
+    "(changed)": "(변경됨)",
+    "Before": "이전",
+    "After": "이후",
+    "clear session for these tasks": "이 작업들의 세션 지우기",
+    "clearing session...": "세션 지우는 중...",
+    "Failed to clear sessions": "세션을 지우지 못했습니다",
+    "Couldn't save — retry": "저장하지 못했습니다. 다시 시도하세요"
   }
 }
