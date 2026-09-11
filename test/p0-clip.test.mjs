@@ -27,7 +27,8 @@ function loadOverlay(pathname = '/AOO/agents/agent-7c304493/runs') {
       "\nthis.stripMarkdownPreview = stripMarkdownPreview;" +
       "\nthis.decorateConnectLinks = decorateConnectLinks;" +
       "\nthis.softenRunListMarkdown = softenRunListMarkdown;" +
-      "\nthis.translateTextNode = translateTextNode;",
+      "\nthis.translateTextNode = translateTextNode;" +
+      "\nthis.translateTitlePart = translateTitlePart;",
     context,
   );
   return context;
@@ -153,4 +154,22 @@ test('account, decisions, and run chrome labels translate and restore', () => {
     run.translateTextNode(node, 'en');
     assert.equal(node.nodeValue, original);
   }
+});
+
+test('status beta account and decisions title chrome translate', () => {
+  const dash = loadOverlay('/AOO');
+  for (const [original, ko] of [['Status', '상태'], ['beta', '베타'], ['Account', '계정']]) {
+    const node = { nodeType: 3, nodeValue: original, parentElement: { closest: () => null } };
+    dash.translateTextNode(node, 'ko');
+    assert.equal(node.nodeValue, ko, original);
+    dash.translateTextNode(node, 'en');
+    assert.equal(node.nodeValue, original);
+  }
+  assert.equal(dash.translateTitlePart('Decisions'), '결정');
+  assert.equal(dash.translateTitlePart('Status'), '상태');
+  assert.equal(dash.translateTitlePart('Aoom'), 'Aoom');
+  assert.equal(dash.translateTitlePart('Paperclip'), 'Paperclip');
+  const empty = { nodeType: 3, nodeValue: 'No status cards yet', parentElement: { closest: () => null } };
+  dash.translateTextNode(empty, 'ko');
+  assert.match(empty.nodeValue, /상태 카드/);
 });

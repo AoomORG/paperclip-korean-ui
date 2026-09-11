@@ -188,7 +188,8 @@
     "Could not update seeding": "대기열 설정을 바꾸지 못했습니다",
     "Please try again.": "다시 시도해 주세요.",
     "Reason (optional)…": "사유(선택)…",
-    "Removed from queue": "대기열에서 제거됨"
+    "Removed from queue": "대기열에서 제거됨",
+    "Decisions land here when they match the queue's rules or an agent adds them.": "대기열 규칙에 맞거나 에이전트가 넣으면 결정이 여기에 모입니다."
   },
   "global": {
     "New Task": "새 작업",
@@ -319,7 +320,17 @@
     "Checkout state": "체크아웃 상태",
     "Change status unavailable": "변경 상태를 확인할 수 없음",
     "Source build": "소스 빌드",
-    "Couldn't save — retry": "저장하지 못했습니다. 다시 시도하세요"
+    "Couldn't save — retry": "저장하지 못했습니다. 다시 시도하세요",
+    "Status": "상태",
+    "beta": "베타",
+    "Account": "계정",
+    "Experimental": "실험",
+    "New card": "새 카드",
+    "No status cards yet": "상태 카드가 아직 없습니다",
+    "Create a card to keep a living summary of the issues you care about.": "관심 있는 이슈의 살아 있는 요약을 보려면 카드를 만드세요.",
+    "Loading cards…": "카드를 불러오는 중…",
+    "Could not load status cards": "상태 카드를 불러오지 못했습니다",
+    "Heads up": "안내"
   },
   "nav": {
     "Search": "검색",
@@ -346,7 +357,9 @@
     "Work": "작업",
     "Agents": "에이전트",
     "Organization": "조직",
-    "Wiki": "위키"
+    "Wiki": "위키",
+    "Status": "상태",
+    "beta": "베타"
   },
   "inbox": {
     "Mine": "내 함",

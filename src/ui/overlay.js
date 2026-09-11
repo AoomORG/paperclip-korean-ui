@@ -23,7 +23,6 @@ const STATUS_SKIP = new Set([
   "High",
   "Medium",
   "Low",
-  "beta",
   "idle",
   "paused",
   "error",
@@ -587,6 +586,40 @@ function applyLayoutFixes(root, lang = getUiLanguage()) {
   fitAccountPopover();
   liftRunPreviewClip(root);
   softenRunListMarkdown(root, lang);
+  applyDocumentTitle(lang);
+}
+
+function translateTitlePart(part) {
+  if (!part) return part;
+  if (part === "Aoom" || part === "Paperclip" || part === "Definish") return part;
+  if (typeof isIssueId === "function" && isIssueId(part)) return part;
+  if (typeof isAgentKey === "function" && isAgentKey(part)) return part;
+  const nav = chromeCatalog.nav || {};
+  const global = chromeCatalog.global || {};
+  const dashboard = chromeCatalog.dashboard || {};
+  if (nav[part]) return nav[part];
+  if (global[part]) return global[part];
+  if (dashboard[part]) return dashboard[part];
+  if (part === "Decisions" && chromeCatalog.decisions && chromeCatalog.decisions.Decisions) {
+    return nav.Decisions || chromeCatalog.decisions.Decisions;
+  }
+  return part;
+}
+
+function applyDocumentTitle(lang) {
+  const raw = document.title || "";
+  const parts = raw.split(" • ");
+  let next;
+  if (lang !== "ko") {
+    const inverted = {};
+    for (const cat of [chromeCatalog.nav || {}, chromeCatalog.global || {}, chromeCatalog.dashboard || {}]) {
+      for (const [en, ko] of Object.entries(cat)) inverted[ko] = en;
+    }
+    next = parts.map((part) => inverted[part] || part).join(" • ");
+  } else {
+    next = parts.map(translateTitlePart).join(" • ");
+  }
+  if (next !== raw) document.title = next;
 }
 
 function applyAll() {
@@ -594,6 +627,7 @@ function applyAll() {
   applyTree(document.body, lang);
   document.documentElement.lang = lang === "ko" ? "ko" : "en";
   applyLayoutFixes(document.body, lang);
+  applyDocumentTitle(lang);
 }
 
 export function startOverlay() {
@@ -643,6 +677,14 @@ export function startOverlay() {
     attributes: true,
     attributeFilter: ATTRS,
   });
+  const titleEl = document.querySelector("title");
+  if (titleEl) {
+    new MutationObserver(() => applyDocumentTitle(getUiLanguage())).observe(titleEl, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  }
   window.addEventListener("paperclip-ui-language", applyAll);
   window.addEventListener("popstate", applyAll);
 }
