@@ -49,6 +49,8 @@ test('P0 run chrome translates Tasks Touched counts', () => {
   assert.equal(ctx.translateRunChrome('Failed after 1 second'), '1초 후 실패');
   assert.equal(ctx.translateRunChrome('Transcript (12)'), '기록 (12)');
   assert.equal(ctx.translateRunChrome('Transcript(1)'), '기록 (1)');
+  assert.equal(ctx.translateRunChrome('Transcript ('), '기록 (');
+  assert.equal(ctx.translateRunChrome('Transcript('), '기록(');
 });
 
 test('P0 run list markdown preview strips markers without touching plain text', () => {
@@ -415,4 +417,13 @@ test('P0 #24 dynamic text node markdown update does not use stale originalText c
   };
   ctx.softenRunListMarkdown(root, 'ko');
   assert.equal(textNode.nodeValue, 'failed updated step');
+});
+
+test('P0 #24 host-split Transcript prefix translates without waiting for the count node', () => {
+  const ctx = loadOverlay('/DEF/agents/a-def-8f083281/runs/abc');
+  const n = { nodeType: 3, nodeValue: 'Transcript (', parentElement: { closest: () => null } };
+  ctx.translateTextNode(n, 'ko');
+  assert.equal(n.nodeValue, '기록 (');
+  ctx.translateTextNode(n, 'en');
+  assert.equal(n.nodeValue, 'Transcript (');
 });

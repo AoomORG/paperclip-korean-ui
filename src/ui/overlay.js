@@ -180,6 +180,9 @@ function translateRunChrome(text) {
   if (m) return "기록 (" + m[1] + ")";
   m = text.match(/^Transcript\((\d+)\)$/);
   if (m) return "기록 (" + m[1] + ")";
+  // Host preview can split the tab label across text nodes: "Transcript (" + "1)".
+  if (text === "Transcript (") return "기록 (";
+  if (text === "Transcript(") return "기록(";
   return null;
 }
 
