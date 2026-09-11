@@ -330,7 +330,14 @@
     "Create a card to keep a living summary of the issues you care about.": "관심 있는 이슈의 살아 있는 요약을 보려면 카드를 만드세요.",
     "Loading cards…": "카드를 불러오는 중…",
     "Could not load status cards": "상태 카드를 불러오지 못했습니다",
-    "Heads up": "안내"
+    "Heads up": "안내",
+    "Agents": "에이전트",
+    "Workspace recovery": "작업 경로 복구",
+    "Clear error": "오류 지우기",
+    "Clear error and return agent to idle": "오류를 지우고 대기 상태로 되돌립니다",
+    "Jump to live": "실시간으로",
+    "Waiting for transcript...": "기록을 기다리는 중...",
+    "No recent agent runs.": "최근 에이전트 실행이 없습니다."
   },
   "nav": {
     "Search": "검색",
@@ -928,6 +935,24 @@
     "clear session for these tasks": "이 작업들의 세션 지우기",
     "clearing session...": "세션 지우는 중...",
     "Failed to clear sessions": "세션을 지우지 못했습니다",
-    "Couldn't save — retry": "저장하지 못했습니다. 다시 시도하세요"
+    "Couldn't save — retry": "저장하지 못했습니다. 다시 시도하세요",
+    "Workspace recovery": "작업 경로 복구",
+    "Clear error": "오류 지우기",
+    "Clear error and return agent to idle": "오류를 지우고 대기 상태로 되돌립니다",
+    "nice": "보기 쉽게",
+    "raw": "원문",
+    "Jump to live": "실시간으로",
+    "Waiting for transcript...": "기록을 기다리는 중...",
+    "Nice": "보기 쉽게",
+    "Raw": "원문"
+  },
+  "apps": {
+    "Browse": "둘러보기",
+    "Review": "검토",
+    "Developer": "개발자",
+    "Connections": "연결",
+    "Advanced setup for developers. Most teams never open this.": "개발자용 고급 설정입니다. 대부분 팀은 열 일이 없습니다.",
+    "waiting for your OK": "확인 대기",
+    "Apps": "앱"
   }
 }

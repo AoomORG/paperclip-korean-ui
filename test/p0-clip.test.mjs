@@ -42,6 +42,10 @@ test('P0 run chrome translates Tasks Touched counts', () => {
   assert.equal(ctx.translateRunChrome('12 tok'), '12 토큰');
   assert.equal(ctx.translateRunChrome('See All →'), '모두 보기 →');
   assert.equal(ctx.translateRunChrome('plain'), null);
+  assert.equal(ctx.translateRunChrome('0 running, 1 paused, 2 errors'), '실행 0, 일시정지 1, 오류 2');
+  assert.equal(ctx.translateRunChrome('18 open, 2 blocked'), '열림 18, 막힘 2');
+  assert.equal(ctx.translateRunChrome('Failed after 1 second'), '1초 후 실패');
+  assert.equal(ctx.translateRunChrome('Transcript (12)'), '기록 (12)');
 });
 
 test('P0 run list markdown preview strips markers without touching plain text', () => {
@@ -237,4 +241,46 @@ test('document title preserves dynamic names and restores originals across route
   assert.equal(ctx.document.title, '조운영 • 에이전트 • Aoom • Paperclip');
   ctx.applyDocumentTitle('en');
   assert.equal(ctx.document.title, '조운영 • Agents • Aoom • Paperclip');
+});
+
+test('dashboard and runs chrome labels translate without touching names', () => {
+  const dash = loadOverlay('/DEF/dashboard');
+  const node = (value) => {
+    const n = { nodeType: 3, nodeValue: value, parentElement: { closest: () => null } };
+    dash.translateTextNode(n, 'ko');
+    return n.nodeValue;
+  };
+  assert.equal(node('Agents'), '에이전트');
+  assert.equal(node('running'), '실행 중');
+  assert.equal(node('paused'), '일시정지');
+  assert.equal(node('errors'), '오류');
+  assert.equal(node('In Review'), '검토 중');
+  assert.equal(node('Done'), '완료');
+  assert.equal(node('Blocked'), '막힘');
+  assert.equal(node('Failed after 1 second'), '1초 후 실패');
+  assert.equal(node('조운영'), '조운영');
+
+  const runs = loadOverlay('/DEF/agents/a-def-8f083281/runs/abc');
+  const runNode = (value) => {
+    const n = { nodeType: 3, nodeValue: value, parentElement: { closest: () => null } };
+    runs.translateTextNode(n, 'ko');
+    return n.nodeValue;
+  };
+  assert.equal(runNode('Workspace recovery'), '작업 경로 복구');
+  assert.equal(runNode('Clear error'), '오류 지우기');
+  assert.equal(runNode('Transcript'), '기록');
+  assert.equal(runNode('nice'), '보기 쉽게');
+  assert.equal(runNode('raw'), '원문');
+  assert.equal(runNode('failed'), '실패');
+
+  const apps = loadOverlay('/DEF/apps');
+  const appNode = (value) => {
+    const n = { nodeType: 3, nodeValue: value, parentElement: { closest: () => null } };
+    apps.translateTextNode(n, 'ko');
+    return n.nodeValue;
+  };
+  assert.equal(appNode('Browse'), '둘러보기');
+  assert.equal(appNode('Review'), '검토');
+  assert.equal(appNode('Developer'), '개발자');
+  assert.equal(appNode('Connections'), '연결');
 });

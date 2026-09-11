@@ -98,6 +98,18 @@ function inAgent() {
   return /\/agents(\/|$)/.test(window.location.pathname);
 }
 
+function inDashboard() {
+  return /\/dashboard(\/|$)/.test(window.location.pathname);
+}
+
+function inApps() {
+  return /\/apps(\/|$)/.test(window.location.pathname);
+}
+
+function inRuns() {
+  return /\/runs(\/|$)/.test(window.location.pathname);
+}
+
 function translateCollapseExpand(text) {
   const nav = chromeCatalog.nav || {};
   for (const prefix of ["Collapse ", "Expand "]) {
@@ -155,7 +167,24 @@ function translateRunChrome(text) {
   let m = text.match(/^(\d+) tok$/);
   if (m) return m[1] + " 토큰";
   if (text === "See All →" || text === "See All ->") return "모두 보기 →";
+  m = text.match(/^(\d+) running, (\d+) paused, (\d+) errors$/);
+  if (m) return "실행 " + m[1] + ", 일시정지 " + m[2] + ", 오류 " + m[3];
+  m = text.match(/^(\d+) open, (\d+) blocked$/);
+  if (m) return "열림 " + m[1] + ", 막힘 " + m[2];
+  m = text.match(/^Failed after (.+)$/i);
+  if (m) return translateDurationChunk(m[1]) + " 후 실패";
+  m = text.match(/^Timed out after (.+)$/i);
+  if (m) return translateDurationChunk(m[1]) + " 후 시간 초과";
+  m = text.match(/^Transcript \((\d+)\)$/);
+  if (m) return "기록 (" + m[1] + ")";
   return null;
+}
+
+function translateDurationChunk(text) {
+  return text
+    .replace(/\b(\d+) seconds?\b/g, "$1초")
+    .replace(/\b(\d+) minutes?\b/g, "$1분")
+    .replace(/\b(\d+) hours?\b/g, "$1시간");
 }
 
 const ISSUE_CHROME = new Set([
@@ -209,6 +238,23 @@ function lookup(text, node) {
   if (inAgent() && !el?.closest('.prose, [data-pc-i18n-skip]')) {
     const agents = chromeCatalog.agents || {};
     if (agents[text]) return agents[text];
+  }
+  const skipProse = Boolean(el?.closest('.prose, [data-pc-i18n-skip]'));
+  if (!skipProse) {
+    const runChromeEarly = translateRunChrome(text);
+    if (runChromeEarly) return runChromeEarly;
+    if (inDashboard()) {
+      const dashTokens = { running: "실행 중", paused: "일시정지", errors: "오류", open: "열림", blocked: "막힘" };
+      if (dashTokens[text]) return dashTokens[text];
+      if (chromeCatalog.agents && chromeCatalog.agents[text]) return chromeCatalog.agents[text];
+    }
+    if (inRuns()) {
+      if (text === "failed") return "실패";
+      if (text === "blocked") return "막힘";
+      if (chromeCatalog.agents && chromeCatalog.agents[text]) return chromeCatalog.agents[text];
+    }
+    if (inApps() && chromeCatalog.apps && chromeCatalog.apps[text]) return chromeCatalog.apps[text];
+    if (inDashboard() && chromeCatalog.global && chromeCatalog.global[text]) return chromeCatalog.global[text];
   }
   if (!text || STATUS_SKIP.has(text) || isIssueId(text) || isAgentKey(text) || isPathish(text)) {
     return null;
