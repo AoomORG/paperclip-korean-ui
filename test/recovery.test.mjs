@@ -69,7 +69,7 @@ test('ordinary issue chat prose with the same sentence stays English', () => {
 });
 test('collapsed system notice title and metadata labels translate', () => {
   const f = fixture('/AOO/issues/AOO-10', ['data-testid="task-chat-system-notice"']);
-  for (const original of ['Missing issue disposition', 'ASSIGNEE', 'RUN EVIDENCE', 'AUTOMATIC RETRY']) {
+  for (const original of ['Missing issue disposition', 'Missing disposition', 'Run evidence', 'Automatic retry']) {
     const node = f.node(original);
     f.translate(node, 'ko');
     assert.match(node.nodeValue, /[가-힣]/, original);

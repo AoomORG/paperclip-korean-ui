@@ -168,7 +168,15 @@
     "Updated": "수정",
     "Add blocker": "차단 추가",
     "+ Add blocker": "차단 추가",
-    "Worked": "작업함"
+    "Worked": "작업함",
+    "Missing disposition": "미기록 다음 단계",
+    "Valid dispositions": "유효한 다음 단계",
+    "Run evidence": "실행 근거",
+    "Successful run": "성공한 실행",
+    "Run status": "실행 상태",
+    "Normalized cause": "정규화 원인",
+    "Detected progress": "확인된 진행",
+    "one corrective handoff wake queued": "교정 인계 실행 1건이 대기열에 있습니다"
   },
   "global": {
     "New Task": "새 작업",
