@@ -717,7 +717,8 @@
     "Status Cards requires Summaries. Disabling Summaries also disables Status Cards.": "상태 카드는 요약이 필요합니다. 요약을 끄면 상태 카드도 꺼집니다.",
     "Toggle task graph liveness auto-recovery": "작업 그래프 자동 복구 켜기/끄기",
     "Toggle guarded dev-server auto-restart": "한가할 때 개발 서버 자동 재시작 켜기/끄기",
-    "Toggle experimental file viewer setting": "실험 파일 뷰어 켜기/끄기"
+    "Toggle experimental file viewer setting": "실험 파일 뷰어 켜기/끄기",
+    "Authenticated public": "인증된 공개"
   },
   "agents": {
     "Instructions": "지시",
