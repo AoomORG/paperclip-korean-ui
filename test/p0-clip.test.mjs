@@ -31,6 +31,9 @@ function loadOverlay(pathname = '/AOO/agents/agent-7c304493/runs') {
       "\nthis.translatePageTitle = translatePageTitle;" +
       "\nthis.applyDocumentTitle = applyDocumentTitle;" +
       "\nthis.exposeRunSummaryOriginal = exposeRunSummaryOriginal;" +
+      "\nthis.extractRunOriginal = extractRunOriginal;" +
+      "\nthis.parseRunDetailId = parseRunDetailId;" +
+      "\nthis.renderRunOriginalPanel = renderRunOriginalPanel;" +
       "\nthis.CLIP_FIX_CSS = CLIP_FIX_CSS;",
     context,
   );
@@ -307,6 +310,7 @@ test('P0 #24 CLIP_FIX_CSS wraps run summary and exposes focus-visible', () => {
   assert.match(ctx.CLIP_FIX_CSS, /text-overflow:\s*clip\s*!important/);
   assert.match(ctx.CLIP_FIX_CSS, /word-break:\s*break-word\s*!important/);
   assert.match(ctx.CLIP_FIX_CSS, /focus-visible/);
+  assert.match(ctx.CLIP_FIX_CSS, /\[data-pc-run-original-text\]/);
 });
 
 test('P0 #24 exposeRunSummaryOriginal updates title without stale and provides accessible label', () => {
@@ -339,8 +343,14 @@ test('P0 #24 exposeRunSummaryOriginal updates title without stale and provides a
       currentNode: textNode,
     };
   };
+  span.closest = (sel) => {
+    if (String(sel).includes('nav')) return null;
+    if (String(sel).includes("a[href*='/runs']")) return link;
+    return null;
+  };
+  link.closest = (sel) => (String(sel).includes('nav') ? null : null);
   const root = {
-    querySelectorAll: (sel) => [link],
+    querySelectorAll: (sel) => (String(sel).includes('span.truncate') ? [span] : []),
   };
 
   ctx.exposeRunSummaryOriginal(root);
@@ -377,7 +387,7 @@ test('P0 #24 exposeRunSummaryOriginal updates title without stale and provides a
     setAttribute: (k, v) => nativeAttrs.set(k, v),
     querySelector: () => null,
   };
-  ctx.exposeRunSummaryOriginal({ querySelectorAll: () => [nativeLink] });
+  ctx.exposeRunSummaryOriginal({ querySelectorAll: () => [] });
   assert.equal(nativeAttrs.get('aria-label'), 'Pre-existing native run action');
   assert.equal(nativeAttrs.get('data-pc-has-summary-label'), undefined);
 });
@@ -426,4 +436,74 @@ test('P0 #24 host-split Transcript prefix translates without waiting for the cou
   assert.equal(n.nodeValue, '기록 (');
   ctx.translateTextNode(n, 'en');
   assert.equal(n.nodeValue, 'Transcript (');
+});
+
+test('P0 #24 extractRunOriginal prefers summary then result then error', () => {
+  const ctx = loadOverlay('/DEF/agents/a-def-8f083281/runs/be7ab0fd-d415-42da-8a01-03ea61a83a7b');
+  assert.equal(ctx.parseRunDetailId('/DEF/agents/a-def-8f083281/runs/be7ab0fd-d415-42da-8a01-03ea61a83a7b'), 'be7ab0fd-d415-42da-8a01-03ea61a83a7b');
+  assert.equal(ctx.parseRunDetailId('/DEF/agents/a-def-8f083281/runs'), null);
+  const summary = 'A'.repeat(641);
+  const fromSummary = ctx.extractRunOriginal({ resultJson: { summary, result: 'nope' }, error: 'err' });
+  assert.equal(fromSummary.text, summary);
+  assert.equal(fromSummary.field, 'resultJson.summary');
+  const fromResult = ctx.extractRunOriginal({ resultJson: { result: 'full result' } });
+  assert.equal(fromResult.text, 'full result');
+  assert.equal(fromResult.field, 'resultJson.result');
+  const fromError = ctx.extractRunOriginal({ resultJson: { a: 1, b: 2, c: 3, d: 4, e: 5, f: 6 }, error: 'x'.repeat(111) });
+  assert.equal(fromError.text, 'x'.repeat(111));
+  assert.equal(fromError.field, 'error');
+  const fromListError = ctx.extractRunOriginal({ resultJson: null, error: 'list-error' });
+  assert.equal(fromListError.text, 'list-error');
+  assert.equal(fromListError.field, 'error');
+});
+
+test('P0 #24 breadcrumb Runs link is not treated as a summary original', () => {
+  const ctx = loadOverlay('/DEF/agents/example/runs/be7ab0fd-d415-42da-8a01-03ea61a83a7b');
+  const crumbAttrs = new Map();
+  const crumb = {
+    tagName: 'A',
+    getAttribute: (k) => crumbAttrs.get(k) || null,
+    setAttribute: (k, v) => crumbAttrs.set(k, v),
+    closest: (sel) => (String(sel).includes('nav') ? { tagName: 'NAV' } : crumb),
+    querySelector: () => null,
+  };
+  const historyAttrs = new Map();
+  const historySpanAttrs = new Map();
+  const historyText = { nodeType: 3, nodeValue: '원문 요약을 보존합니다' };
+  let historyLink;
+  const historySpan = {
+    tagName: 'SPAN',
+    className: 'truncate',
+    getAttribute: (k) => historySpanAttrs.get(k) || null,
+    setAttribute: (k, v) => historySpanAttrs.set(k, v),
+    closest: (sel) => {
+      if (String(sel).includes('nav')) return null;
+      if (String(sel).includes("a[href*='/runs']")) return historyLink;
+      return null;
+    },
+  };
+  historyLink = {
+    tagName: 'A',
+    getAttribute: (k) => historyAttrs.get(k) || null,
+    setAttribute: (k, v) => historyAttrs.set(k, v),
+    closest: (sel) => (String(sel).includes('nav') ? null : null),
+  };
+  ctx.document.createTreeWalker = () => {
+    let visited = false;
+    return {
+      currentNode: historyText,
+      nextNode() {
+        if (visited) return false;
+        visited = true;
+        return true;
+      },
+    };
+  };
+  ctx.exposeRunSummaryOriginal({
+    querySelectorAll: (sel) => (String(sel).includes('span.truncate') ? [historySpan] : [crumb, historyLink]),
+  });
+  assert.equal(crumbAttrs.get('title'), undefined);
+  assert.equal(crumbAttrs.get('aria-label'), undefined);
+  assert.equal(historyAttrs.get('title'), '원문 요약을 보존합니다');
+  assert.equal(historySpanAttrs.get('title'), '원문 요약을 보존합니다');
 });

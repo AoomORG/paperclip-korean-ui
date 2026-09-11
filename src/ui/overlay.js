@@ -40,6 +40,14 @@ let started = false;
 const overlayOwned = new WeakSet();
 const overlaySetValues = new WeakMap();
 let applyingOverlay = false;
+let layoutFixFrame = 0;
+const runOriginalById = new Map();
+let runOriginalFetchId = null;
+const RUN_ORIGINAL_ID = "pc-korean-ui-run-original";
+let lastSeenRunId = null;
+let runOriginalMountedId = null;
+let runOriginalSeq = 0;
+let runOriginalAbort = null;
 
 export function getUiLanguage() {
   const value = window.localStorage.getItem(STORAGE_KEY);
@@ -352,6 +360,7 @@ function translateTextNode(node, lang) {
 
 function translateAttrs(el, lang) {
   if (shouldSkipNode(el)) return;
+  if (el.getAttribute?.("data-pc-original-summary") || el.closest?.("nav a[href*='/runs'], nav a[href*='/runs/']")) return;
   for (const attr of ATTRS) {
     if (!el.hasAttribute(attr)) continue;
     const current = el.getAttribute(attr) ?? "";
@@ -518,6 +527,24 @@ a[href*="/runs/"]:focus-visible {
   outline-offset: -2px !important;
   background-color: var(--accent, rgba(0, 0, 0, 0.05)) !important;
 }
+[data-pc-run-original] {
+  display: block !important;
+  max-width: 100%;
+  margin: 0.75rem 0 1rem !important;
+  padding: 0.75rem 0.9rem !important;
+  border: 1px solid var(--border, rgba(127,127,127,0.35));
+  border-radius: 8px;
+}
+[data-pc-run-original-text] {
+  display: block !important;
+  white-space: pre-wrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  margin: 0 !important;
+  font: inherit !important;
+}
 `;
 
 function looksLikeMarkdown(text) {
@@ -643,11 +670,12 @@ function exposeRunSummaryOriginal(root) {
   if (typeof window === "undefined") return;
   const scope = root && root.querySelectorAll ? root : document.body;
   if (!scope || typeof scope.querySelectorAll !== "function") return;
-  const links = scope.querySelectorAll("a[href*='/runs'], a[href*='/runs/']");
-  for (const link of links) {
-    const summarySpan = link.querySelector("span.truncate");
-    const targetNode = summarySpan || link;
-    const walker = document.createTreeWalker(targetNode, NodeFilter.SHOW_TEXT);
+  const spans = scope.querySelectorAll("a[href*='/runs'] span.truncate, a[href*='/runs/'] span.truncate");
+  for (const summarySpan of spans) {
+    const link = summarySpan.closest("a[href*='/runs'], a[href*='/runs/']");
+    if (!link) continue;
+    if (link.closest("nav")) continue;
+    const walker = document.createTreeWalker(summarySpan, NodeFilter.SHOW_TEXT);
     const parts = [];
     while (walker.nextNode()) {
       const node = walker.currentNode;
@@ -661,13 +689,11 @@ function exposeRunSummaryOriginal(root) {
     if (link.getAttribute("title") !== full) {
       link.setAttribute("title", full);
     }
-    if (summarySpan) {
-      if (summarySpan.getAttribute("data-pc-original-summary") !== full) {
-        summarySpan.setAttribute("data-pc-original-summary", full);
-      }
-      if (summarySpan.getAttribute("title") !== full) {
-        summarySpan.setAttribute("title", full);
-      }
+    if (summarySpan.getAttribute("data-pc-original-summary") !== full) {
+      summarySpan.setAttribute("data-pc-original-summary", full);
+    }
+    if (summarySpan.getAttribute("title") !== full) {
+      summarySpan.setAttribute("title", full);
     }
     const currentAria = link.getAttribute("aria-label");
     const hasOwnerLabel = link.getAttribute("data-pc-has-summary-label") === "true";
@@ -693,6 +719,183 @@ function liftRunPreviewClip(root) {
   }
 }
 
+function parseRunDetailId(pathname) {
+  const match = String(pathname || "").match(/\/runs\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
+function extractRunOriginal(run) {
+  if (!run || typeof run !== "object") return { text: "", field: null };
+  const resultJson = run.resultJson && typeof run.resultJson === "object" ? run.resultJson : null;
+  if (resultJson) {
+    if (typeof resultJson.summary === "string" && resultJson.summary.length > 0) {
+      return { text: resultJson.summary, field: "resultJson.summary" };
+    }
+    if (typeof resultJson.result === "string" && resultJson.result.length > 0) {
+      return { text: resultJson.result, field: "resultJson.result" };
+    }
+  }
+  if (typeof run.error === "string" && run.error.length > 0) {
+    return { text: run.error, field: "error" };
+  }
+  return { text: "", field: null };
+}
+
+function renderRunOriginalPanel(rec) {
+  if (typeof document === "undefined" || typeof document.createElement !== "function") return;
+  let el = document.getElementById?.(RUN_ORIGINAL_ID) || null;
+  const currentId = typeof window !== "undefined" ? parseRunDetailId(window.location?.pathname) : null;
+  if (!rec || rec.status !== "ok" || !rec.text || rec.runId !== currentId || rec.seq !== runOriginalSeq) {
+    if (el) el.remove();
+    runOriginalMountedId = null;
+    return;
+  }
+  if (!el) {
+    el = document.createElement("section");
+    el.id = RUN_ORIGINAL_ID;
+    el.setAttribute("data-pc-run-original", "true");
+    el.setAttribute("data-pc-i18n-skip", "true");
+    const pre = document.createElement("pre");
+    pre.setAttribute("data-pc-run-original-text", "true");
+    pre.setAttribute("data-pc-i18n-skip", "true");
+    el.appendChild(pre);
+  }
+  const pre = el.querySelector("[data-pc-run-original-text]");
+  if (pre && pre.textContent !== rec.text) pre.textContent = rec.text;
+  el.setAttribute("data-pc-run-original-field", rec.field || "");
+  el.setAttribute("data-pc-run-original-len", String(rec.text.length));
+  runOriginalMountedId = rec.runId;
+  if (el.isConnected) return;
+  const main = document.querySelector("main") || document.body;
+  const heading = main.querySelector?.("h1, h2");
+  if (heading) heading.insertAdjacentElement("afterend", el);
+  else main.prepend(el);
+}
+
+function mountRunOriginalSummary() {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  if (typeof document.getElementById !== "function") return;
+  const runId = parseRunDetailId(window.location?.pathname);
+  if (lastSeenRunId !== runId) {
+    if (lastSeenRunId) runOriginalById.delete(lastSeenRunId);
+    runOriginalSeq += 1;
+    if (runOriginalAbort) {
+      try { runOriginalAbort.abort(); } catch {}
+      runOriginalAbort = null;
+    }
+    runOriginalFetchId = null;
+    const stale = document.getElementById(RUN_ORIGINAL_ID);
+    if (stale) stale.remove();
+    runOriginalMountedId = null;
+    lastSeenRunId = runId;
+  }
+  if (!runId) return;
+  const cached = runOriginalById.get(runId);
+  if (cached && cached.seq === runOriginalSeq) {
+    if (cached.status === "ok" && cached.text) renderRunOriginalPanel(cached);
+    else {
+      const el = document.getElementById(RUN_ORIGINAL_ID);
+      if (el) el.remove();
+      runOriginalMountedId = null;
+    }
+    return;
+  }
+  if (runOriginalFetchId === runId || typeof window.fetch !== "function") return;
+  const seq = runOriginalSeq;
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  runOriginalAbort = controller;
+  runOriginalFetchId = runId;
+  const requestPath = "/api/heartbeat-runs/" + runId;
+  const applyIfCurrent = (writer) => {
+    if (seq !== runOriginalSeq) return false;
+    if (parseRunDetailId(window.location?.pathname) !== runId) return false;
+    writer();
+    return true;
+  };
+  const clearPanel = () => {
+    const el = document.getElementById(RUN_ORIGINAL_ID);
+    if (el) el.remove();
+    runOriginalMountedId = null;
+  };
+  window.fetch(requestPath, {
+    method: "GET",
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
+    signal: controller ? controller.signal : undefined,
+  }).then((res) => {
+    if (seq !== runOriginalSeq || parseRunDetailId(window.location?.pathname) !== runId) return null;
+    if (!res || !res.ok) {
+      applyIfCurrent(() => {
+        runOriginalById.set(runId, { status: "denied", http: res?.status ?? 0, text: "", field: null, runId, seq });
+        clearPanel();
+      });
+      return null;
+    }
+    return res.json().then((run) => {
+      if (seq !== runOriginalSeq || parseRunDetailId(window.location?.pathname) !== runId) return;
+      const bodyId = typeof run?.id === "string" ? run.id.toLowerCase() : "";
+      if (bodyId !== runId) {
+        applyIfCurrent(() => {
+          runOriginalById.set(runId, { status: "denied", http: res.status, text: "", field: null, runId, seq });
+          clearPanel();
+        });
+        return;
+      }
+      const extracted = extractRunOriginal(run);
+      if (!extracted.text) {
+        applyIfCurrent(() => {
+          runOriginalById.set(runId, { status: "empty", http: res.status, text: "", field: extracted.field, runId, seq });
+          clearPanel();
+        });
+        return;
+      }
+      applyIfCurrent(() => {
+        const rec = { status: "ok", http: res.status, text: extracted.text, field: extracted.field, runId, seq };
+        runOriginalById.set(runId, rec);
+        renderRunOriginalPanel(rec);
+      });
+    });
+  }).catch((err) => {
+    if (seq !== runOriginalSeq) return;
+    if (err && err.name === "AbortError") return;
+    applyIfCurrent(() => {
+      runOriginalById.set(runId, { status: "error", http: 0, text: "", field: null, runId, seq });
+      clearPanel();
+    });
+  }).finally(() => {
+    if (seq !== runOriginalSeq) return;
+    if (runOriginalFetchId === runId) runOriginalFetchId = null;
+    if (runOriginalAbort === controller) runOriginalAbort = null;
+  });
+}
+
+function mutationInsideRunOriginal(mutation) {
+  const target = mutation.target;
+  const el = target && target.nodeType === Node.ELEMENT_NODE ? target : target && target.parentElement;
+  return Boolean(el && el.closest && el.closest("[data-pc-run-original]"));
+}
+
+function scheduleLayoutFixes(lang) {
+  const run = () => {
+    if (applyingOverlay) return;
+    applyingOverlay = true;
+    try {
+      applyLayoutFixes(document.body, lang);
+    } finally {
+      applyingOverlay = false;
+    }
+  };
+  if (typeof requestAnimationFrame !== "function") {
+    run();
+    return;
+  }
+  if (layoutFixFrame) return;
+  layoutFixFrame = requestAnimationFrame(() => {
+    layoutFixFrame = 0;
+    run();
+  });
+}
+
 function applyLayoutFixes(root, lang = getUiLanguage()) {
   injectClipFixCss();
   decorateConnectLinks(root && root.querySelectorAll ? root : document.body);
@@ -700,6 +903,7 @@ function applyLayoutFixes(root, lang = getUiLanguage()) {
   liftRunPreviewClip(root);
   softenRunListMarkdown(root, lang);
   exposeRunSummaryOriginal(root);
+  mountRunOriginalSummary();
   applyDocumentTitle(lang);
 }
 
@@ -776,6 +980,7 @@ export function startOverlay() {
     const lang = getUiLanguage();
     const skillRoots = new Set();
     for (const mutation of mutations) {
+      if (mutationInsideRunOriginal(mutation)) continue;
       if (mutation.type === "characterData") {
         if (overlayOwned.has(mutation.target)) {
           if (overlaySetValues.get(mutation.target) === mutation.target.nodeValue) {
@@ -790,11 +995,17 @@ export function startOverlay() {
         }
       }
       for (const added of mutation.addedNodes) {
+        if (added.nodeType === Node.ELEMENT_NODE && added.closest?.("[data-pc-run-original]")) continue;
         if (added.nodeType === Node.TEXT_NODE) translateTextNode(added, lang);
         else if (added.nodeType === Node.ELEMENT_NODE) applyTree(added, lang);
       }
       if (mutation.type === "attributes" && mutation.target instanceof HTMLElement) {
-        if (ATTRS.includes(mutation.attributeName || "")) translateAttrs(mutation.target, lang);
+        if (ATTRS.includes(mutation.attributeName || "")) {
+          const el = mutation.target;
+          if (!(el.getAttribute("data-pc-original-summary") || el.closest("[data-pc-run-original], nav a[href*='/runs'], nav a[href*='/runs/']"))) {
+            translateAttrs(el, lang);
+          }
+        }
       }
       if (window.location.pathname.includes("/skills")) {
         const target = mutation.target;
@@ -805,12 +1016,14 @@ export function startOverlay() {
         }
       }
     }
-    applyingOverlay = true;
-    try {
-      applyLayoutFixes(document.body, lang);
-      for (const root of skillRoots) applySkills(root, lang);
-    } finally {
-      applyingOverlay = false;
+    scheduleLayoutFixes(lang);
+    if (skillRoots.size) {
+      applyingOverlay = true;
+      try {
+        for (const root of skillRoots) applySkills(root, lang);
+      } finally {
+        applyingOverlay = false;
+      }
     }
   });
   observer.observe(document.body, {
