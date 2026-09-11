@@ -283,7 +283,9 @@
     "Saving...": "저장 중...",
     "Saving…": "저장 중…",
     "Edit": "편집",
-    "Remove": "제거"
+    "Remove": "제거",
+    "Conference Room": "회의실",
+    "Wiki": "위키"
   },
   "nav": {
     "Search": "검색",
@@ -309,7 +311,8 @@
     "Experimental": "실험",
     "Work": "작업",
     "Agents": "에이전트",
-    "Organization": "조직"
+    "Organization": "조직",
+    "Wiki": "위키"
   },
   "inbox": {
     "Mine": "내 함",
@@ -834,6 +837,16 @@
     "In Review": "검토 중",
     "No persisted transcript for this run.": "이 실행에 저장된 기록이 없습니다.",
     "Showing the first": "처음 표시",
-    "Used 2 tools (5 calls)": "도구 2개 사용(호출 5회)"
+    "Used 2 tools (5 calls)": "도구 2개 사용(호출 5회)",
+    "Skills": "스킬",
+    "Agents": "에이전트",
+    "Auto": "자동",
+    "Loading keys...": "키 불러오는 중...",
+    "in review": "검토 중",
+    "Blocked": "막힘",
+    "Done": "완료",
+    "Conference Room": "회의실",
+    "Wiki": "위키",
+    "agent": "에이전트"
   }
 }

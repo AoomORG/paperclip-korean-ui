@@ -128,3 +128,14 @@ test('agent runtime statuses stay English', () => {
     assert.equal(node.nodeValue, original);
   }
 });
+
+test('agent skills tab and dashboard chart labels translate', () => {
+  const f = fixture('/AOO/agents/agent-7c304493', []);
+  for (const original of ['Skills', 'Instructions', 'In Review']) {
+    const node = f.node(original);
+    f.translate(node, 'ko');
+    assert.match(node.nodeValue, /[가-힣]/, original);
+    f.translate(node, 'en');
+    assert.equal(node.nodeValue, original);
+  }
+});

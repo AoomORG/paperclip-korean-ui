@@ -199,6 +199,10 @@ function lookup(text, node) {
     m = text.match(/^Blocked · (\d+) blockers? need attention$/);
     if (m) return `막힘 · 확인이 필요한 차단 ${m[1]}건`;
   }
+  if (inAgent() && !el?.closest('.prose, [data-pc-i18n-skip]')) {
+    const agents = chromeCatalog.agents || {};
+    if (agents[text]) return agents[text];
+  }
   if (!text || STATUS_SKIP.has(text) || isIssueId(text) || isAgentKey(text) || isPathish(text)) {
     return null;
   }
