@@ -589,37 +589,35 @@ function applyLayoutFixes(root, lang = getUiLanguage()) {
   applyDocumentTitle(lang);
 }
 
-function translateTitlePart(part) {
-  if (!part) return part;
-  if (part === "Aoom" || part === "Paperclip" || part === "Definish") return part;
-  if (typeof isIssueId === "function" && isIssueId(part)) return part;
-  if (typeof isAgentKey === "function" && isAgentKey(part)) return part;
-  const nav = chromeCatalog.nav || {};
-  const global = chromeCatalog.global || {};
-  const dashboard = chromeCatalog.dashboard || {};
-  if (nav[part]) return nav[part];
-  if (global[part]) return global[part];
-  if (dashboard[part]) return dashboard[part];
-  if (part === "Decisions" && chromeCatalog.decisions && chromeCatalog.decisions.Decisions) {
-    return nav.Decisions || chromeCatalog.decisions.Decisions;
+let titleOriginal = null;
+let titleTranslated = null;
+
+function translatePageTitle(raw) {
+  const parts = (raw || "").split(" • ");
+  let companyIdx = -1;
+  if (parts.length >= 2 && parts[parts.length - 1] === "Paperclip") {
+    companyIdx = parts.length - 2;
   }
-  return part;
+  const nav = chromeCatalog.nav || {};
+  return parts.map((part, index) => {
+    if (index === companyIdx) return part;
+    if (part === "Paperclip" || part === "Aoom" || part === "Definish") return part;
+    if (typeof isIssueId === "function" && isIssueId(part)) return part;
+    if (typeof isAgentKey === "function" && isAgentKey(part)) return part;
+    if (nav[part]) return nav[part];
+    return part;
+  }).join(" • ");
 }
 
 function applyDocumentTitle(lang) {
-  const raw = document.title || "";
-  const parts = raw.split(" • ");
-  let next;
-  if (lang !== "ko") {
-    const inverted = {};
-    for (const cat of [chromeCatalog.nav || {}, chromeCatalog.global || {}, chromeCatalog.dashboard || {}]) {
-      for (const [en, ko] of Object.entries(cat)) inverted[ko] = en;
-    }
-    next = parts.map((part) => inverted[part] || part).join(" • ");
-  } else {
-    next = parts.map(translateTitlePart).join(" • ");
+  const current = document.title || "";
+  if (current !== titleTranslated) {
+    titleOriginal = current;
   }
-  if (next !== raw) document.title = next;
+  const source = titleOriginal || current;
+  const next = lang === "ko" ? translatePageTitle(source) : source;
+  titleTranslated = lang === "ko" ? next : null;
+  if (next !== current) document.title = next;
 }
 
 function applyAll() {
