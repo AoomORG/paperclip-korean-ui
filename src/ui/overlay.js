@@ -24,6 +24,13 @@ const STATUS_SKIP = new Set([
   "Medium",
   "Low",
   "beta",
+  "idle",
+  "paused",
+  "error",
+  "succeeded",
+  "running",
+  "failed",
+  "unknown",
 ]);
 const ATTRS = ["aria-label", "title", "placeholder"];
 
@@ -88,6 +95,10 @@ function inSettings() {
   );
 }
 
+function inAgent() {
+  return /\/agents(\/|$)/.test(window.location.pathname);
+}
+
 function translateCollapseExpand(text) {
   const nav = chromeCatalog.nav || {};
   for (const prefix of ["Collapse ", "Expand "]) {
@@ -145,7 +156,7 @@ const ISSUE_CHROME = new Set([
   "Relationships", "RELATIONSHIPS", "Parent", "Blocked by", "Blocking", "Related tasks",
   "Execution", "EXECUTION", "Reviewers", "Approvers", "Monitor", "Watchdog",
   "About", "ABOUT", "Originating", "Started", "Created", "Updated",
-  "Add blocker", "+ Add blocker", "Worked",
+  "Add blocker", "+ Add blocker", "Worked", "Auto mode",
 ]);
 
 function lookup(text, node) {
@@ -183,6 +194,10 @@ function lookup(text, node) {
     const catalog = chromeCatalog.decisions || {};
     const chromeText = text.replace(/\s+/g, " ");
     if (ISSUE_CHROME.has(chromeText) && catalog[chromeText]) return catalog[chromeText];
+    let m = text.match(/^Called (\d+) tools$/);
+    if (m) return `도구 ${m[1]}회 호출`;
+    m = text.match(/^Blocked · (\d+) blockers? need attention$/);
+    if (m) return `막힘 · 확인이 필요한 차단 ${m[1]}건`;
   }
   if (!text || STATUS_SKIP.has(text) || isIssueId(text) || isAgentKey(text) || isPathish(text)) {
     return null;
@@ -219,6 +234,17 @@ function lookup(text, node) {
   if (settingsPrefix) return settingsPrefix;
   if (inSettings() && chromeCatalog.settings && chromeCatalog.settings[text]) {
     return chromeCatalog.settings[text];
+  }
+  if (inAgent() && !el?.closest('.prose, [data-pc-i18n-skip]')) {
+    const agents = chromeCatalog.agents || {};
+    if (agents[text]) return agents[text];
+    if (chromeCatalog.settings && chromeCatalog.settings[text]) return chromeCatalog.settings[text];
+    let m = text.match(/^Called (\d+) tools$/);
+    if (m) return `도구 ${m[1]}회 호출`;
+    m = text.match(/^Used (\d+) tools \((\d+) calls\)$/);
+    if (m) return `도구 ${m[1]}개 사용(호출 ${m[2]}회)`;
+    m = text.match(/^Blocked · (\d+) blockers? need attention$/);
+    if (m) return `막힘 · 확인이 필요한 차단 ${m[1]}건`;
   }
   const fr = chromeCatalog.fragments || {};
   let mixed = text;

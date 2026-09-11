@@ -105,3 +105,26 @@ test('issue status tokens stay English on the properties panel', () => {
     assert.equal(node.nodeValue, original);
   }
 });
+test('agent configuration chrome translates on agent pages only', () => {
+  const f = fixture('/AOO/agents/agent-7c304493/configuration', []);
+  for (const original of ['Configuration', 'Assign Task', 'Run Heartbeat', 'Identity', 'Reports to', 'Permissions', 'API Keys']) {
+    const node = f.node(original);
+    f.translate(node, 'ko');
+    assert.match(node.nodeValue, /[가-힣]/, original);
+    f.translate(node, 'en');
+    assert.equal(node.nodeValue, original);
+  }
+  const other = fixture('/AOO/projects', []);
+  const n2 = other.node('Assign Task');
+  other.translate(n2, 'ko');
+  assert.equal(n2.nodeValue, 'Assign Task');
+});
+
+test('agent runtime statuses stay English', () => {
+  const f = fixture('/AOO/agents/agent-7c304493/configuration', []);
+  for (const original of ['idle', 'succeeded', 'paused']) {
+    const node = f.node(original);
+    f.translate(node, 'ko');
+    assert.equal(node.nodeValue, original);
+  }
+});
