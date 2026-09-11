@@ -355,7 +355,13 @@
   "fragments": {
     "0 running, 0 paused, 0 errors": "실행 0, 일시정지 0, 오류 0",
     "18 open, 2 blocked": "열림 18, 막힘 2",
-    " unread": " 안 읽음"
+    " unread": " 안 읽음",
+    "This is exactly the tool set Paperclip will accept for": "Paperclip이 이 에이전트에 허용하는 도구 목록입니다",
+    ". Profile and policy edits are reflected within ~5 seconds. The agent's prompt can narrow this list but": ". 프로필·정책 수정은 약 5초 안에 반영됩니다. 에이전트 지시는 이 목록을 좁힐 수만 있고",
+    "cannot expand it": "넓힐 수는 없습니다",
+    "— everything else is blocked by default.": "— 나머지는 기본적으로 차단됩니다.",
+    "Installed apps load tools into": "설치된 앱은 도구를",
+    "'s context on every run. Permitted-only apps do not add context cost.": " 컨텍스트에 매 실행마다 넣습니다. 허용만 된 앱은 컨텍스트 비용을 추가하지 않습니다."
   },
   "settings": {
     "General": "일반",
@@ -847,6 +853,19 @@
     "Done": "완료",
     "Conference Room": "회의실",
     "Wiki": "위키",
-    "agent": "에이전트"
+    "agent": "에이전트",
+    "live": "라이브",
+    "Live": "라이브",
+    "Live Run": "실시간 실행",
+    "To Do": "할 일",
+    "In Progress": "진행 중",
+    "Cancelled": "취소됨",
+    "cancelled": "취소됨",
+    "in progress": "진행 중",
+    "Paperclip bundled": "Paperclip 번들",
+    "enabled": "사용 중",
+    "Saved adapter config affects the next run. Active runs keep the config they started with, and config changes may start a fresh adapter session.": "저장한 어댑터 설정은 다음 실행부터 적용됩니다. 이미 돌아가는 실행은 시작 당시 설정을 유지하며, 설정 변경 시 새 어댑터 세션이 열릴 수 있습니다.",
+    "Authenticated public": "인증된 공개",
+    "of": "중"
   }
 }

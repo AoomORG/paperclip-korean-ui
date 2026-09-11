@@ -249,6 +249,8 @@ function lookup(text, node) {
     if (m) return `도구 ${m[1]}개 사용(호출 ${m[2]}회)`;
     m = text.match(/^Blocked · (\d+) blockers? need attention$/);
     if (m) return `막힘 · 확인이 필요한 차단 ${m[1]}건`;
+    m = text.match(/^(\d+) of (\d+)$/);
+    if (m) return `${m[1]}/${m[2]}`;
   }
   const fr = chromeCatalog.fragments || {};
   let mixed = text;
