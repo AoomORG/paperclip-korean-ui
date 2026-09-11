@@ -18,8 +18,6 @@ const STATUS_SKIP = new Set([
   "in_progress",
   "blocked",
   "done",
-  "Backlog",
-  "Done",
   "High",
   "Medium",
   "Low",
@@ -113,6 +111,10 @@ function inDashboard() {
 
 function inApps() {
   return /\/apps(\/|$)/.test(window.location.pathname);
+}
+
+function inWiki() {
+  return /\/wiki(\/|$)/.test(window.location.pathname);
 }
 
 function inRuns() {
@@ -234,7 +236,7 @@ function lookup(text, node) {
     if (match) return `결정 ${match[1]}건`;
     match = normalized.match(/^Recovery in progress · (\d+)\/(\d+)$/);
     if (match) return `복구 진행 중 · ${match[1]}/${match[2]}`;
-    match = normalized.match(/^Blocked · (\d+) blockers? need attention$/);
+    match = normalized.match(/^Blocked · (\d+) blockers? needs? attention$/);
     if (match) return `막힘 · 확인이 필요한 차단 ${match[1]}건`;
     if (systemNotice) return null;
   }
@@ -246,7 +248,7 @@ function lookup(text, node) {
     if (ISSUE_CHROME.has(chromeText) && catalog[chromeText]) return catalog[chromeText];
     let m = text.match(/^Called (\d+) tools$/);
     if (m) return `도구 ${m[1]}회 호출`;
-    m = text.match(/^Blocked · (\d+) blockers? need attention$/);
+    m = text.match(/^Blocked · (\d+) blockers? needs? attention$/);
     if (m) return `막힘 · 확인이 필요한 차단 ${m[1]}건`;
   }
   if (inAgent() && !el?.closest('.prose, [data-pc-i18n-skip]')) {
@@ -274,6 +276,7 @@ function lookup(text, node) {
   if (!text || STATUS_SKIP.has(text) || isIssueId(text) || isAgentKey(text) || isPathish(text)) {
     return null;
   }
+  if (inWiki() && chromeCatalog.wiki && chromeCatalog.wiki[text]) return chromeCatalog.wiki[text];
   if (chromeCatalog.global && chromeCatalog.global[text]) return chromeCatalog.global[text];
   if (chromeCatalog.dashboard && chromeCatalog.dashboard[text]) return chromeCatalog.dashboard[text];
   if (text.startsWith("Open actions for ")) {
@@ -327,7 +330,7 @@ function lookup(text, node) {
     if (m) return `도구 ${m[1]}회 호출`;
     m = text.match(/^Used (\d+) tools \((\d+) calls\)$/);
     if (m) return `도구 ${m[1]}개 사용(호출 ${m[2]}회)`;
-    m = text.match(/^Blocked · (\d+) blockers? need attention$/);
+    m = text.match(/^Blocked · (\d+) blockers? needs? attention$/);
     if (m) return `막힘 · 확인이 필요한 차단 ${m[1]}건`;
     m = text.match(/^(\d+) of (\d+)$/);
     if (m) return `${m[1]}/${m[2]}`;
@@ -958,8 +961,15 @@ function translatePageTitle(raw) {
   const skip = new Set();
   if (brandIdx >= 0) skip.add(brandIdx);
   if (companyIdx >= 0) skip.add(companyIdx);
-  if (companyIdx >= 2 && parts[companyIdx - 1] === parts[companyIdx]) {
-    skip.add(companyIdx - 1);
+  if (brandIdx >= 0 && companyIdx >= 1) {
+    const company = parts[companyIdx];
+    while (companyIdx >= 1 && parts[companyIdx - 1] === company) {
+      parts.splice(companyIdx - 1, 1);
+      brandIdx = parts.length - 1;
+      companyIdx = parts.length - 2;
+    }
+    skip.add(brandIdx);
+    skip.add(companyIdx);
   }
   return parts.map((part, index) => {
     if (skip.has(index)) return part;

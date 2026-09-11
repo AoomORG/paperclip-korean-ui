@@ -186,9 +186,10 @@ test('status beta account and decisions title chrome translate', () => {
   assert.equal(dash.translatePageTitle('조운영 • Agents • Aoom • Paperclip'), '조운영 • 에이전트 • Aoom • Paperclip');
   assert.equal(dash.translatePageTitle('Need Status review • Tasks • Aoom • Paperclip'), 'Need Status review • 작업 • Aoom • Paperclip');
   assert.equal(dash.translatePageTitle('Status • Paperclip'), 'Status • Paperclip');
-  assert.equal(dash.translatePageTitle('Apps • Aoom • Aoom • Paperclip'), '앱 • Aoom • Aoom • Paperclip');
-  assert.equal(dash.translatePageTitle('Settings • Aoom • Aoom • Paperclip'), '설정 • Aoom • Aoom • Paperclip');
-  assert.equal(dash.translatePageTitle('Connect an app • Apps • Aoom • Aoom • Paperclip'), 'Connect an app • 앱 • Aoom • Aoom • Paperclip');
+  assert.equal(dash.translatePageTitle('Apps • Aoom • Aoom • Paperclip'), '앱 • Aoom • Paperclip');
+  assert.equal(dash.translatePageTitle('Settings • Aoom • Aoom • Paperclip'), '설정 • Aoom • Paperclip');
+  assert.equal(dash.translatePageTitle('Settings • Definish • Definish • Paperclip'), '설정 • Definish • Paperclip');
+  assert.equal(dash.translatePageTitle('Connect an app • Apps • Aoom • Aoom • Paperclip'), 'Connect an app • 앱 • Aoom • Paperclip');
   const empty = { nodeType: 3, nodeValue: 'No status cards yet', parentElement: { closest: () => null } };
   dash.translateTextNode(empty, 'ko');
   assert.match(empty.nodeValue, /상태 카드/);
@@ -239,7 +240,7 @@ test('document title preserves dynamic names and restores originals across route
   ctx.window.location.pathname = '/AOO/apps';
   ctx.document.title = 'Apps • Aoom • Aoom • Paperclip';
   ctx.applyDocumentTitle('ko');
-  assert.equal(ctx.document.title, '앱 • Aoom • Aoom • Paperclip');
+  assert.equal(ctx.document.title, '앱 • Aoom • Paperclip');
   ctx.applyDocumentTitle('en');
   assert.equal(ctx.document.title, 'Apps • Aoom • Aoom • Paperclip');
 

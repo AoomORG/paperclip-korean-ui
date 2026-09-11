@@ -338,7 +338,19 @@
     "Jump to live": "실시간으로",
     "Waiting for transcript...": "기록을 기다리는 중...",
     "No recent agent runs.": "최근 에이전트 실행이 없습니다.",
-    "Backlog": "백로그"
+    "Backlog": "백로그",
+    "Agent Feed": "에이전트 피드",
+    "Live activity from your agents": "에이전트의 실시간 활동",
+    "Ask anything about your organization...": "조직에 대해 무엇이든 물어보세요...",
+    "Ask anything about your organization": "조직에 대해 무엇이든 물어보세요",
+    "Search tasks...": "작업 검색...",
+    "Tasks": "작업",
+    "In Review": "검토 중",
+    "Done": "완료",
+    "Blocked": "막힘",
+    "OLDER THAN A DAY": "하루가 지난 항목",
+    "Older than a day": "하루가 지난 항목",
+    "1 blocker needs attention": "확인이 필요한 차단 1건"
   },
   "nav": {
     "Search": "검색",
@@ -973,5 +985,15 @@
     "Activity": "활동",
     "Connect your own MCP server": "내 MCP 서버 연결",
     "Connect with a link": "링크로 연결"
+  },
+  "wiki": {
+    "Ask": "질문",
+    "Add Content": "내용 추가",
+    "SHARED WIKI SPACES": "공유 위키 공간",
+    "Shared Wiki Spaces": "공유 위키 공간",
+    "Edit page": "페이지 편집",
+    "On this page": "이 페이지에서",
+    "History": "기록",
+    "Updated": "갱신"
   }
 }
