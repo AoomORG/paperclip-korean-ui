@@ -1240,8 +1240,26 @@ function fitBoardChatLayout() {
   document.documentElement.classList.toggle('pc-ui16-board-chat-has-messages', empty.hasMessages);
 }
 
+
+const ADAPTER_TYPE_LABELS = { Ocx: "OpenCodex (ocx)" };
+function decorateAdapterTypeLabels(root) {
+  if (typeof document === "undefined") return;
+  const scope = root && root.querySelectorAll ? root : document.body;
+  if (!scope) return;
+  const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const raw = node.nodeValue ?? "";
+    const trimmed = raw.trim();
+    const mapped = ADAPTER_TYPE_LABELS[trimmed];
+    if (!mapped) continue;
+    const next = raw.replace(trimmed, mapped);
+    if (node.nodeValue !== next) node.nodeValue = next;
+  }
+}
 function applyLayoutFixes(root, lang = getUiLanguage()) {
   injectClipFixCss();
+  decorateAdapterTypeLabels(root && root.querySelectorAll ? root : document.body);
   decorateConnectLinks(root && root.querySelectorAll ? root : document.body);
   fitAccountPopover();
   liftRunPreviewClip(root);

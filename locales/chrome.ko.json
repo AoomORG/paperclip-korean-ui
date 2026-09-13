@@ -958,7 +958,9 @@
     "Waiting for transcript...": "기록을 기다리는 중...",
     "Nice": "보기 쉽게",
     "Raw": "원문",
-    "Backlog": "백로그"
+    "Backlog": "백로그",
+    "Ocx": "OpenCodex (ocx)",
+    "External adapter": "외부 어댑터"
   },
   "apps": {
     "Browse": "둘러보기",
