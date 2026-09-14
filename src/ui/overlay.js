@@ -251,13 +251,22 @@ const ISSUE_CHROME = new Set([
   "Add blocker", "+ Add blocker", "Worked", "Auto mode",
 ]);
 
+const ITEM_VERDICT_CHROME = new Set([
+  "Approve", "Reject", "Defer", "Approve all",
+  "Apply 0 decisions", "Applying…",
+  "Approve this item", "Reject this item", "Defer this item",
+  "Choose a verdict", "Items to review",
+  "Mark verdicts, then apply them in one pass.",
+  "Reason needed", "Human only",
+]);
+
 function lookup(text, node) {
   const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
   if (isStoredUserContent(el)) return null;
   // System UI only: never translate editable/source content or stored issue prose.
   const systemNotice = Boolean(el?.closest('[data-testid="task-chat-system-notice"], [data-testid="task-chat-system-notice-details"]'));
   const decisionSurface = /\/(decisions|inbox)(\/|$)/.test(window.location.pathname)
-    || Boolean(el?.closest('[data-testid="issue-recovery-action-card"], [data-recovery-state], [data-radix-popper-content-wrapper]'));
+    || Boolean(el?.closest('[data-testid="issue-recovery-action-card"], [data-recovery-state], [data-radix-popper-content-wrapper], [data-attention-actions], [data-verdict], [aria-label="Choose a verdict"], [aria-label="Approve this item"], [aria-label="Reject this item"], [aria-label="Defer this item"]'));
   if (systemNotice || (decisionSurface && !el?.closest('.prose, [data-pc-i18n-skip]'))) {
     const catalog = chromeCatalog.decisions || {};
     const normalized = text.replace(/\s+/g, " ").replace(/[’]/g, "'");
@@ -279,6 +288,10 @@ function lookup(text, node) {
     if (match) return `복구 진행 중 · ${match[1]}/${match[2]}`;
     match = normalized.match(/^Blocked · (\d+) blockers? needs? attention$/);
     if (match) return `막힘 · 확인이 필요한 차단 ${match[1]}건`;
+    match = normalized.match(/^Apply (\d+) decisions?$/);
+    if (match) return `결정 ${match[1]}건 적용`;
+    match = normalized.match(/^(\d+) draft verdicts? ready to apply$/);
+    if (match) return `적용할 초안 ${match[1]}건`;
     if (systemNotice) return null;
   }
   const issueChrome = /\/issues(\/|$)/.test(window.location.pathname)
@@ -287,10 +300,15 @@ function lookup(text, node) {
     const catalog = chromeCatalog.decisions || {};
     const chromeText = text.replace(/\s+/g, " ");
     if (ISSUE_CHROME.has(chromeText) && catalog[chromeText]) return catalog[chromeText];
+    if (ITEM_VERDICT_CHROME.has(chromeText) && catalog[chromeText]) return catalog[chromeText];
     let m = text.match(/^Called (\d+) tools$/);
     if (m) return `도구 ${m[1]}회 호출`;
     m = text.match(/^Blocked · (\d+) blockers? needs? attention$/);
     if (m) return `막힘 · 확인이 필요한 차단 ${m[1]}건`;
+    m = chromeText.match(/^Apply (\d+) decisions?$/);
+    if (m) return `결정 ${m[1]}건 적용`;
+    m = chromeText.match(/^(\d+) draft verdicts? ready to apply$/);
+    if (m) return `적용할 초안 ${m[1]}건`;
   }
   if (inAgent() && !el?.closest('.prose, [data-pc-i18n-skip]')) {
     const agents = chromeCatalog.agents || {};

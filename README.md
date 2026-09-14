@@ -10,6 +10,11 @@ Paperclip 공식 dist를 고치지 않고 크롬 UI를 한국어로 덮는다.
 
 결정 목록·복구 카드·조치 메뉴는 `decisions` 섹션이다. 시스템 문구만 화면에서 번역하고 이슈 본문·로그·오류 코드·담당자 이름·DB 원문은 바꾸지 않는다. 다른 화면의 일반 단어에는 이 번역을 적용하지 않는다.
 
+## 1.1.26 변경 사항
+
+- AOO/DEF 결정 화면과 이슈 카드의 항목 판정 크롬을 번역한다: Approve this item, Approve all, Apply N decisions.
+- `/issues` 경로에서도 항목 판정 버튼·aria-label만 번역하고 이슈 본문은 그대로 둔다.
+
 ## 1.1.25 변경 사항
 
 - 회의실 가로(844x390)에서 BoardChat split 행(role=separator)을 찾아 채팅 칸 폭을 확보한다. composer 카드에 폭을 넣지 않는다.
