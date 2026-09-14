@@ -189,7 +189,21 @@
     "Please try again.": "다시 시도해 주세요.",
     "Reason (optional)…": "사유(선택)…",
     "Removed from queue": "대기열에서 제거됨",
-    "Decisions land here when they match the queue's rules or an agent adds them.": "대기열 규칙에 맞거나 에이전트가 넣으면 결정이 여기에 모입니다."
+    "Decisions land here when they match the queue's rules or an agent adds them.": "대기열 규칙에 맞거나 에이전트가 넣으면 결정이 여기에 모입니다.",
+    "Approve": "승인",
+    "Reject": "거부",
+    "Defer": "보류",
+    "Approve all": "모두 승인",
+    "Approve this item": "이 항목 승인",
+    "Reject this item": "이 항목 거부",
+    "Defer this item": "이 항목 보류",
+    "Apply 0 decisions": "결정 0건 적용",
+    "Applying…": "적용 중…",
+    "Choose a verdict": "항목 판정",
+    "Items to review": "검토할 항목",
+    "Mark verdicts, then apply them in one pass.": "항목을 고른 뒤 한 번에 적용합니다.",
+    "Reason needed": "사유 필요",
+    "Human only": "사람만"
   },
   "global": {
     "New Task": "새 작업",

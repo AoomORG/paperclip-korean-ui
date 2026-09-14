@@ -157,6 +157,38 @@ test('P1 wiki file-tree document names stay English while Add Content chrome tra
   assert.equal(ko('/DEF/wiki', 'Add Content'), '내용 추가');
 });
 
+test('AOO item-verdict chrome translates on decisions and issue cards', () => {
+  assert.equal(ko('/AOO/decisions', 'Approve all'), '모두 승인');
+  assert.equal(ko('/AOO/decisions', 'Approve'), '승인');
+  assert.equal(ko('/AOO/decisions', 'Reject'), '거부');
+  assert.equal(ko('/AOO/decisions', 'Apply 0 decisions'), '결정 0건 적용');
+  assert.equal(ko('/AOO/decisions', 'Apply 2 decisions'), '결정 2건 적용');
+  assert.equal(ko('/AOO/decisions', '1 draft verdict ready to apply'), '적용할 초안 1건');
+  assert.equal(ko('/AOO/decisions', 'Mark verdicts, then apply them in one pass.'), '항목을 고른 뒤 한 번에 적용합니다.');
+  const issue = loadOverlay('/AOO/issues/AOO-43');
+  const verdict = (value) => {
+    const node = {
+      nodeType: 3,
+      nodeValue: value,
+      parentElement: { closest: () => null },
+    };
+    issue.translateTextNode(node, 'ko');
+    return node.nodeValue;
+  };
+  assert.equal(verdict('Approve all'), '모두 승인');
+  assert.equal(verdict('Approve this item'), '이 항목 승인');
+  assert.equal(verdict('Apply 1 decision'), '결정 1건 적용');
+  const attrs = { 'aria-label': 'Approve this item' };
+  const el = {
+    hasAttribute: (name) => Object.prototype.hasOwnProperty.call(attrs, name),
+    getAttribute: (name) => attrs[name] ?? null,
+    setAttribute: (name, value) => { attrs[name] = value; },
+    closest: () => null,
+  };
+  issue.translateAttrs(el, 'ko');
+  assert.equal(attrs['aria-label'], '이 항목 승인');
+});
+
 test('P1 issue-row titles stay English while Done filter chrome translates', () => {
   const ctx = loadOverlay('/DEF/issues');
   const group = { querySelector(sel) { return String(sel).includes('data-inbox-issue-link') ? {} : null; } };
