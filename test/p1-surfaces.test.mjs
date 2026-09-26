@@ -250,3 +250,18 @@ test('upstream 2026.916 chrome additions translate on their routes', () => {
   assert.equal(ko('/DEF/dashboard', 'Chat with an agent'), '에이전트와 대화');
   assert.equal(ko('/DEF/dashboard', 'Dismiss announcement'), '안내 닫기');
 });
+
+test('upstream 2026.916 page-by-page chrome additions translate', () => {
+  // Export/Import & Secrets
+  assert.equal(ko('/DEF/company/export', 'Package files'), '패키지 파일');
+  assert.equal(ko('/DEF/company/settings/secrets', 'Provider vault'), '제공자 금고');
+  assert.equal(ko('/DEF/company/settings/instance/plugins', 'Installed Plugins'), '설치된 플러그인');
+  assert.equal(ko('/DEF/company/settings/instance/adapters', 'Installed from npm'), 'NPM에서 설치됨');
+  assert.equal(ko('/DEF/execution-workspaces/ws-1', 'Execution workspace name'), '실행 작업공간 이름');
+  assert.equal(ko('/DEF/issues/DEF-1', 'This task is hidden'), '이 작업은 숨겨져 있습니다');
+  assert.equal(ko('/DEF/pipelines', 'Move to stage'), '단계로 이동');
+  assert.equal(ko('/DEF/routines', 'Default agent'), '기본 에이전트');
+  assert.equal(ko('/DEF/activity/costs', 'Inference ledger'), '추론 원장');
+  assert.equal(ko('/DEF/cases', 'Desktop case rows'), '데스크톱 케이스 행');
+  assert.equal(ko('/auth', 'Board ownership claimed'), '보드 소유권 등록 완료');
+});
