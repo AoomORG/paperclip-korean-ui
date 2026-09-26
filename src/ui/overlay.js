@@ -111,7 +111,8 @@ function inSettings() {
   return (
     path.includes("/company/settings") ||
     path.includes("/company/export") ||
-    path.includes("/company/import")
+    path.includes("/company/import") ||
+    /\/(?:instance\/)?settings(?:\/|$)/.test(path)
   );
 }
 
@@ -145,8 +146,16 @@ function isStoredIssueTitle(el) {
   const row = titleSpan.closest('.group');
   return Boolean(row && typeof row.querySelector === 'function' && row.querySelector('[data-inbox-issue-link]'));
 }
+function isStoredSkillMetadata(el) {
+  if (!inSkills() || !el) return false;
+  if (el.closest('a[href*="/skills/"] span.font-medium')) return true;
+  if (el.closest('div.truncate.font-mono.text-sm.font-medium.text-foreground')) return true;
+  if (el.closest('p.max-w-3xl.text-sm.text-muted-foreground')) return true;
+  if (/\/skills\/[^/]+/.test(window.location.pathname) && el.closest('h1.text-2xl.font-semibold')) return true;
+  return false;
+}
 function isStoredUserContent(el) {
-  return isStoredWikiTitle(el) || isStoredFileTreeTitle(el) || isStoredIssueTitle(el);
+  return isStoredWikiTitle(el) || isStoredFileTreeTitle(el) || isStoredIssueTitle(el) || isStoredSkillMetadata(el);
 }
 function isWikiChromeControl(el) {
   if (!el || isStoredWikiTitle(el)) return false;
@@ -445,7 +454,13 @@ function lookup(text, node) {
     }
   }
   if (chromeCatalog.inbox && chromeCatalog.inbox[text] && inInbox(node)) return chromeCatalog.inbox[text];
-  if (inSkills() && chromeCatalog.skills && chromeCatalog.skills[text]) return chromeCatalog.skills[text];
+  if (inSkills()) {
+    const enabled = text.match(/^Enabled for (\d+) agents?$/);
+    if (enabled) return `에이전트 ${enabled[1]}명에게 사용 설정됨`;
+    const count = text.match(/^(\d+) skills?$/);
+    if (count) return `스킬 ${count[1]}개`;
+    if (chromeCatalog.skills && chromeCatalog.skills[text]) return chromeCatalog.skills[text];
+  }
   const settingsPrefix = translateSettingsPrefix(text);
   if (settingsPrefix) return settingsPrefix;
   if (inSettings() && chromeCatalog.settings && chromeCatalog.settings[text]) {

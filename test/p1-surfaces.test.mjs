@@ -73,6 +73,46 @@ test('live QA findings translate only on their pages and restore English', () =>
   assert.equal(attrs['aria-label'], 'Open Example organization switcher');
 });
 
+test('experimental, settings, and skill controls translate and restore without touching content', () => {
+  const rows = [
+    ['/EXAMPLE/company/settings/instance/experimental', 'Toggle it off and back on to arm execution for tasks created here.', '이곳에서 생성한 작업을 실행 가능하게 하려면 껐다가 다시 켜세요.'],
+    ['/EXAMPLE/instance/settings/general', 'Configure instance-wide preferences', '인스턴스 전체 설정'],
+    ['/EXAMPLE/company/settings/instance/adapters', 'Adapter reinstalled', '어댑터를 다시 설치했습니다'],
+    ['/EXAMPLE/company/settings/secrets', 'Paperclip never re-displays stored values.', 'Paperclip은 저장된 값을 다시 표시하지 않습니다.'],
+    ['/EXAMPLE/skills', 'This skill cannot be installed — content is not valid Agent Skills markdown.', '유효한 Agent Skills 마크다운이 아니므로 설치할 수 없습니다.'],
+    ['/EXAMPLE/skills', 'Installed skills', '설치된 스킬'],
+    ['/EXAMPLE/skills', 'Skills available to this organization.', '이 조직에서 사용할 수 있는 스킬입니다.'],
+    ['/EXAMPLE/skills', 'Enabled for 1 agent', '에이전트 1명에게 사용 설정됨'],
+    ['/EXAMPLE/skills', '24 skills', '스킬 24개'],
+    ['/EXAMPLE/skills/example/studio', 'Unsaved edits live only in this Studio session. Save to create the next version before running tests or switching files.', '저장하지 않은 변경은 현재 스튜디오 세션에만 남습니다. 테스트를 실행하거나 파일을 바꾸기 전에 저장해 다음 버전을 만드세요.'],
+    ['/EXAMPLE/agents/example/skills', 'Automatic and detected skills (read-only)', '자동·감지된 스킬(읽기 전용)'],
+  ];
+  for (const [pathname, en, expected] of rows) {
+    const ctx = loadOverlay(pathname);
+    const node = { nodeType: 3, nodeValue: en, parentElement: { closest: () => null } };
+    ctx.translateTextNode(node, 'ko');
+    assert.equal(node.nodeValue, expected, `${pathname}: KO`);
+    ctx.translateTextNode(node, 'en');
+    assert.equal(node.nodeValue, en, `${pathname}: EN`);
+  }
+  assert.equal(ko('/EXAMPLE/dashboard', 'Adapter reinstalled'), 'Adapter reinstalled');
+  const ctx = loadOverlay('/EXAMPLE/skills/example/studio');
+  const original = 'Unsaved edits live only in this Studio session. Save to create the next version before running tests or switching files.';
+  const content = { nodeType: 3, nodeValue: original, parentElement: { closest: (selector) => selector.includes('.prose') ? {} : null } };
+  ctx.translateTextNode(content, 'ko');
+  assert.equal(content.nodeValue, original);
+  for (const selector of [
+    'a[href*="/skills/"] span.font-medium',
+    'div.truncate.font-mono.text-sm.font-medium.text-foreground',
+    'p.max-w-3xl.text-sm.text-muted-foreground',
+    'h1.text-2xl.font-semibold',
+  ]) {
+    const skillValue = { nodeType: 3, nodeValue: 'Source', parentElement: { closest: (candidate) => candidate === selector ? {} : null } };
+    ctx.translateTextNode(skillValue, 'ko');
+    assert.equal(skillValue.nodeValue, 'Source', `stored skill metadata: ${selector}`);
+  }
+});
+
 test('routine folder hint split across React text nodes restores the original', () => {
   const ctx = loadOverlay('/EXAMPLE/routines');
   const raw = ['Group these ', 'routines', ' into folders to keep things tidy.'];
