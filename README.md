@@ -10,6 +10,15 @@ Paperclip 공식 dist를 고치지 않고 크롬 UI를 한국어로 덮는다.
 
 결정 목록·복구 카드·조치 메뉴는 `decisions` 섹션이다. 시스템 문구만 화면에서 번역하고 이슈 본문·로그·오류 코드·담당자 이름·DB 원문은 바꾸지 않는다. 다른 화면의 일반 단어에는 이 번역을 적용하지 않는다.
 
+## 1.1.27 변경 사항
+
+- 업스트림(2026.916.1) 추가 UI 크롬 한국어 오버레이 반영:
+  - 사이드바 신규 섹션 및 아이템: Connectors(연결), Audit(감사), Chats(채팅), Recent Tasks(최근 작업)
+  - 실험 설정(Instance Experimental): 간소화 UI(Streamlined UI), 에이전트 채팅(Agent Chat), 채팅 연결(Chat connectors), 기본 격리 작업공간(Use Isolated Workspaces By Default), 첫 작업 계획 문서 제안(First task: propose with a plan document), Paperclip Runner
+  - 에이전트 상세 문맥 탭 및 루틴/감사: Harness / Runtime(실행 환경 / 런타임), Permissions / Trust(권한 / 신뢰), Revisions(수정 이력), 루틴 일정 및 감사 링크
+  - 앱/커넥터 상세: Services(서비스), Permissions(권한), Review(검토), 자격증명/신원 허용 범위 선택 다이얼로그
+  - 공통 알림(Announcements) 및 에이전트 채팅 팝업 크롬
+
 ## 1.1.26 변경 사항
 
 - AOO/DEF 결정 화면과 이슈 카드의 항목 판정 크롬을 번역한다: Approve this item, Approve all, Apply N decisions.

@@ -216,3 +216,37 @@ test('P1 issue-row titles stay English while Done filter chrome translates', () 
   ctx.translateTextNode(filterNode, 'ko');
   assert.equal(filterNode.nodeValue, '완료');
 });
+
+test('upstream 2026.916 chrome additions translate on their routes', () => {
+  // Nav
+  const navCtx = loadOverlay('/DEF/dashboard');
+  const navNode = (val) => {
+    const node = { nodeType: 3, nodeValue: val, parentElement: { closest: (s) => String(s).includes('nav') ? {} : null } };
+    navCtx.translateTextNode(node, 'ko');
+    return node.nodeValue;
+  };
+  assert.equal(navNode('Connectors'), '연결');
+  assert.equal(navNode('Audit'), '감사');
+  assert.equal(navNode('Chats'), '채팅');
+  assert.equal(navNode('Recent Tasks'), '최근 작업');
+
+  // Experimental settings
+  assert.equal(ko('/DEF/company/settings/instance/experimental', 'Streamlined UI'), '간소화 UI');
+  assert.equal(ko('/DEF/company/settings/instance/experimental', 'Agent Chat'), '에이전트 채팅');
+  assert.equal(ko('/DEF/company/settings/instance/experimental', 'Chat connectors'), '채팅 연결');
+  assert.equal(ko('/DEF/company/settings/instance/experimental', 'Paperclip Runner'), 'Paperclip Runner');
+
+  // Agent detail contextual views
+  assert.equal(ko('/DEF/agents/agent-1', 'Harness / Runtime'), '실행 환경 / 런타임');
+  assert.equal(ko('/DEF/agents/agent-1', 'Permissions / Trust'), '권한 / 신뢰');
+  assert.equal(ko('/DEF/agents/agent-1', 'Revisions'), '수정 이력');
+
+  // Apps / Connectors
+  assert.equal(ko('/DEF/apps', 'Services'), '서비스');
+  assert.equal(ko('/DEF/apps', 'Add connection'), '연결 추가');
+  assert.equal(ko('/DEF/apps', 'Who can use this identity'), '이 신원을 사용할 수 있는 사용자');
+
+  // Global announcements and chats
+  assert.equal(ko('/DEF/dashboard', 'Chat with an agent'), '에이전트와 대화');
+  assert.equal(ko('/DEF/dashboard', 'Dismiss announcement'), '안내 닫기');
+});
