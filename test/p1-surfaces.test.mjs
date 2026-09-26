@@ -34,6 +34,74 @@ function ko(pathname, value) {
   return node.nodeValue;
 }
 
+test('live QA findings translate only on their pages and restore English', () => {
+  const rows = [
+    ['/EXAMPLE/company/settings/instance/experimental', 'Turning this off preserves conversations and lets active runs finish, but prevents new messages.', '끄면 기존 대화는 보존하고 진행 중인 실행은 마칠 수 있지만, 새 메시지는 보낼 수 없습니다.'],
+    ['/EXAMPLE/company/settings/instance/environments/new', 'Strict host key checking', '호스트 키 엄격 검증'],
+    ['/EXAMPLE/apps', "Connect Cloudflare's provider-hosted MCP server.", 'Cloudflare가 호스팅하는 MCP 서버에 연결합니다.'],
+    ['/EXAMPLE/activity/costs', 'Last 30 Days', '최근 30일'],
+    ['/EXAMPLE/routines', '4 routines', '루틴 4개'],
+    ['/EXAMPLE/workspaces', 'Showing 50 of 141 workspaces.', '작업공간 141개 중 50개 표시'],
+    ['/EXAMPLE/issues/EX-1', 'Automatic recovery of this task stopped.', '이 작업의 자동 복구가 중단되었습니다.'],
+    ['/EXAMPLE/projects', '5 tasks', '작업 5개'],
+    ['/EXAMPLE/apps/byo', 'Any remote tool URL works here — including a local MCP server like', '원격 도구 URL을 입력하세요. 로컬 MCP 서버도 사용할 수 있습니다. 예:'],
+  ];
+  for (const [pathname, en, expected] of rows) {
+    const ctx = loadOverlay(pathname);
+    const node = { nodeType: 3, nodeValue: en, parentElement: { closest: () => null } };
+    ctx.translateTextNode(node, 'ko');
+    assert.equal(node.nodeValue, expected, `${pathname}: KO`);
+    ctx.translateTextNode(node, 'en');
+    assert.equal(node.nodeValue, en, `${pathname}: EN`);
+  }
+  assert.equal(ko('/EXAMPLE/dashboard', 'Last 30 Days'), 'Last 30 Days');
+  assert.equal(ko('/EXAMPLE/dashboard', 'Strict host key checking'), 'Strict host key checking');
+  const catalog = JSON.parse(readFileSync(new URL('../locales/chrome.ko.json', import.meta.url)));
+  assert.equal(JSON.stringify(catalog).includes('Definish Finish'), false);
+  const ctx = loadOverlay('/EXAMPLE/dashboard');
+  const attrs = { 'aria-label': 'Open Example organization switcher' };
+  const switcher = {
+    nodeType: 1,
+    closest: selector => selector === 'button' ? {} : null,
+    hasAttribute: name => name in attrs,
+    getAttribute: name => attrs[name] ?? null,
+    setAttribute: (name, value) => { attrs[name] = value; },
+  };
+  ctx.translateAttrs(switcher, 'ko');
+  assert.equal(attrs['aria-label'], 'Example 조직 전환 열기');
+  ctx.translateAttrs(switcher, 'en');
+  assert.equal(attrs['aria-label'], 'Open Example organization switcher');
+});
+
+test('routine folder hint split across React text nodes restores the original', () => {
+  const ctx = loadOverlay('/EXAMPLE/routines');
+  const raw = ['Group these ', 'routines', ' into folders to keep things tidy.'];
+  const nodes = raw.map(value => ({ nodeType: 3, nodeValue: value }));
+  const parent = { closest: () => null, get textContent() { return nodes.map(node => node.nodeValue).join(''); } };
+  for (const node of nodes) node.parentElement = parent;
+  for (const node of nodes) ctx.translateTextNode(node, 'ko');
+  assert.equal(parent.textContent, '이 루틴을 폴더에 묶어 정리하세요.');
+  for (const node of nodes) ctx.translateTextNode(node, 'en');
+  assert.equal(parent.textContent, raw.join(''));
+});
+
+test('project task counts split across text nodes restore every node', () => {
+  const ctx = loadOverlay('/EXAMPLE/projects');
+  const raw = ['5', ' task', 's'];
+  const nodes = raw.map(value => ({ nodeType: 3, nodeValue: value }));
+  const parent = {
+    closest: () => null,
+    classList: { contains: name => name === 'tabular-nums' },
+    childNodes: nodes,
+    get textContent() { return nodes.map(node => node.nodeValue).join(''); },
+  };
+  for (const node of nodes) node.parentElement = parent;
+  for (const node of nodes) ctx.translateTextNode(node, 'ko');
+  assert.equal(parent.textContent, '5개 작업');
+  for (const node of nodes) ctx.translateTextNode(node, 'en');
+  assert.equal(parent.textContent, '5 tasks');
+});
+
 test('P1 board chat chrome #15', () => {
   const path = '/DEF/inbox';
   assert.equal(ko(path, 'Conference Room'), '회의실');
@@ -88,7 +156,7 @@ test('P1 settings title company duplicate #19', () => {
 test('P1 stored wiki prose and issue titles stay English', () => {
   const ctx = loadOverlay('/DEF/wiki');
   const proseClosest = (sel) => String(sel).includes('.prose') ? {} : null;
-  for (const value of ['Ask', 'History', 'Done', 'Backlog']) {
+  for (const value of ['Ask', 'History', 'Done', 'Backlog', '1w ago']) {
     const node = { nodeType: 3, nodeValue: value, parentElement: { closest: proseClosest } };
     ctx.translateTextNode(node, 'ko');
     assert.equal(node.nodeValue, value, value);

@@ -178,6 +178,7 @@ function translateRelativeTime(text) {
   out = out.replace(/\b(\d+)m ago\b/g, "$1분 전");
   out = out.replace(/\b(\d+)s ago\b/g, "$1초 전");
   out = out.replace(/\b(\d+)d ago\b/g, "$1일 전");
+  out = out.replace(/\b(\d+)w ago\b/g, "$1주 전");
   out = out.replace(/\bJust now\b/g, "방금");
   return out === text ? null : out;
 }
@@ -263,6 +264,8 @@ const ITEM_VERDICT_CHROME = new Set([
 function lookup(text, node) {
   const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
   if (isStoredUserContent(el)) return null;
+  const organizationSwitcher = text.match(/^Open (.+) organization switcher$/);
+  if (organizationSwitcher && el?.closest('button')) return `${organizationSwitcher[1]} 조직 전환 열기`;
   // System UI only: never translate editable/source content or stored issue prose.
   const systemNotice = Boolean(el?.closest('[data-testid="task-chat-system-notice"], [data-testid="task-chat-system-notice-details"]'));
   const decisionSurface = /\/(decisions|inbox)(\/|$)/.test(window.location.pathname)
@@ -315,7 +318,67 @@ function lookup(text, node) {
     if (agents[text]) return agents[text];
   }
   const skipProse = Boolean(el?.closest('.prose, [data-pc-i18n-skip]'));
+  if (skipProse) return null;
   if (!skipProse) {
+    const path = window.location.pathname;
+    if (/\/routines(\/|$)/.test(path)) {
+      const folderHint = 'into folders to keep things tidy.';
+      if (text === 'Group these' && el?.textContent?.includes(folderHint)) return '이';
+      if (text === 'routines' && el?.textContent?.includes(folderHint)) return '루틴을';
+      if (text === folderHint) return '폴더에 묶어 정리하세요.';
+    }
+    if (/\/apps(\/|$)/.test(path) && el?.closest('button')) {
+      const addAccount = text.match(/^Add account (.+)$/);
+      if (addAccount) return `${addAccount[1]} 계정 추가`;
+      const addConnection = text.match(/^Add connection (.+)$/);
+      if (addConnection) return `${addConnection[1]} 연결 추가`;
+      const connect = text.match(/^Connect (.+)$/);
+      if (connect && !text.includes(' server') && !text.endsWith('.')) return `${connect[1]} 연결`;
+    }
+    const routeCatalogs = [
+      [/\/(activity|audit|costs|budgets|timeline)(\/|$)/, chromeCatalog.activity],
+      [/\/routines(\/|$)/, chromeCatalog.routines],
+      [/\/projects(\/|$)/, chromeCatalog.projects],
+      [/\/workspaces(\/|$)/, chromeCatalog.workspaces],
+      [/\/issues(\/|$)/, chromeCatalog.issues],
+      [/\/approvals(\/|$)/, chromeCatalog.approvals],
+    ];
+    for (const [pattern, catalog] of routeCatalogs) {
+      if (pattern.test(path) && catalog?.[text]) return catalog[text];
+    }
+    if (/\/routines(\/|$)/.test(path)) {
+      const count = text.match(/^(\d+) routines?$/);
+      if (count) return `루틴 ${count[1]}개`;
+    }
+    if (/\/projects(\/|$)/.test(path)) {
+      const count = text.match(/^(\d+) (projects?|tasks?)$/);
+      if (count) return `${count[2].startsWith('project') ? '프로젝트' : '작업'} ${count[1]}개`;
+      if (text.startsWith('Sort: ')) return `정렬: ${text.slice(6)}`;
+    }
+    if (/\/workspaces(\/|$)/.test(path)) {
+      const count = text.match(/^(\d+) workspaces?$/);
+      if (count) return `작업공간 ${count[1]}개`;
+      const shown = text.match(/^Showing (\d+) of (\d+) workspaces\.$/);
+      if (shown) return `작업공간 ${shown[2]}개 중 ${shown[1]}개 표시`;
+    }
+    if (/\/activity(\/|$)/.test(path)) {
+      const events = text.match(/^(\d+) total events in range$/);
+      if (events) return `선택 기간 이벤트 ${events[1]}건`;
+      const tokenEvents = text.match(/^([\d.]+[KMB]?) tokens across request-scoped events$/);
+      if (tokenEvents) return `요청별 이벤트에서 토큰 ${tokenEvents[1]}개 사용`;
+      const debits = text.match(/^(\$[\d,.]+) debits · (\$[\d,.]+) credits$/);
+      if (debits) return `차변 ${debits[1]} · 대변 ${debits[2]}`;
+      const estimate = text.match(/^(\$[\d,.]+) estimated in range$/);
+      if (estimate) return `선택 기간 예상액 ${estimate[1]}`;
+      const inOut = text.match(/^in ([\d.]+[KMB]?) · out ([\d.]+[KMB]?)$/);
+      if (inOut) return `입력 ${inOut[1]} · 출력 ${inOut[2]}`;
+      const biller = text.match(/^(\d+) api · (\d+) subscription$/);
+      if (biller) return `API ${biller[1]} · 구독 ${biller[2]}`;
+    }
+    if (/\/approvals(\/|$)/.test(path) && text.startsWith('Approval request created ')) {
+      const when = text.slice('Approval request created '.length);
+      return `승인 요청 생성 ${translateRelativeTime(when) || when}`;
+    }
     const runChromeEarly = translateRunChrome(text);
     if (runChromeEarly) return runChromeEarly;
     if (inDashboard()) {
@@ -413,13 +476,24 @@ function translateTextNode(node, lang) {
   if (shouldSkipNode(node)) return;
   const raw = node.nodeValue ?? "";
   const trimmed = raw.trim();
-  if (!trimmed) return;
   if (lang !== "ko") {
     if (originalText.has(node)) {
       node.nodeValue = originalText.get(node);
       originalText.delete(node);
     }
     return;
+  }
+  if (!trimmed) return;
+  const parent = node.parentElement;
+  if (/\/projects(\/|$)/.test(window.location.pathname) && parent?.classList?.contains('tabular-nums')) {
+    const count = parent.textContent.trim().match(/^(\d+) (tasks?|projects?)$/);
+    const parts = [...parent.childNodes].filter(child => child.nodeType === Node.TEXT_NODE);
+    if (count && parts.length > 1 && parts[0] === node) {
+      for (const part of parts) if (!originalText.has(part)) originalText.set(part, part.nodeValue ?? '');
+      parts[0].nodeValue = `${count[1]}개 ${count[2].startsWith('task') ? '작업' : '프로젝트'}`;
+      for (const part of parts.slice(1)) part.nodeValue = '';
+      return;
+    }
   }
   const translated = lookup(trimmed, node);
   if (!translated || translated === trimmed) return;
@@ -1322,7 +1396,6 @@ function translatePageTitle(raw) {
   }
   return parts.map((part, index) => {
     if (skip.has(index)) return part;
-    if (part === "Aoom" || part === "Definish") return part;
     if (typeof isIssueId === "function" && isIssueId(part)) return part;
     if (typeof isAgentKey === "function" && isAgentKey(part)) return part;
     const translated = nav[part] || (chromeCatalog.global && chromeCatalog.global[part]);
