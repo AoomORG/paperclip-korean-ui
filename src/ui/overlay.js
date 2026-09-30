@@ -479,6 +479,10 @@ function lookup(text, node) {
     m = text.match(/^(\d+) of (\d+)$/);
     if (m) return `${m[1]}/${m[2]}`;
   }
+  for (const p of chromeCatalog.patterns || []) {
+    const pm = text.match(new RegExp(p.re));
+    if (pm) return p.ko.replace(/\$(\d)/g, (_, n) => pm[Number(n)] ?? "");
+  }
   const fr = chromeCatalog.fragments || {};
   let mixed = text;
   for (const [en, ko] of Object.entries(fr)) {
